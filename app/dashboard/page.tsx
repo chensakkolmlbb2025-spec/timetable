@@ -1,0 +1,327 @@
+"use client"
+
+// Calendar removed from dashboard empty state per user request
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { ChevronLeft, ChevronRight, Plus, Save } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardContent } from "@/components/ui"
+import EmptyState from "@/components/empty-state"
+import { Input } from "@/components/ui/input"
+import { DashboardNav } from "@/components/dashboard-nav"
+import { TimeGrid } from "@/components/time-grid"
+import { TimeBlockModal } from "@/components/time-block-modal"
+import { useAuth } from "@/components/auth-provider"
+import {
+  getTimeBlocks,
+  getUserPreferences,
+  saveDefaultTemplate,
+  getDefaultTemplates,
+  updateTimeBlock,
+  deleteTimeBlock,
+} from "@/lib/storage"
+import { formatDate, formatDisplayDate, addDays, isSameDay } from "@/lib/date-utils"
+import type { TimeBlock, DefaultTemplate } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
+
+export default function DashboardPage() {
+  const router = useRouter()
+  const { user, loading } = useAuth()
+  const { toast } = useToast()
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [blocks, setBlocks] = useState<TimeBlock[]>([])
+  const [preferences, setPreferences] = useState({ defaultDayStart: "06:00", defaultDayEnd: "22:00" })
+  const [quickTime, setQuickTime] = useState(preferences.defaultDayStart)
+  const [quickDuration, setQuickDuration] = useState<number>(60)
+  const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/sign-in")
+    }
+  }, [user, loading, router])
+
+  useEffect(() => {
+    if (user) {
+      const load = async () => {
+        const prefs = await getUserPreferences(user.id)
+        setPreferences(prefs)
+        await loadBlocks()
+      }
+      load()
+    }
+  }, [user, currentDate])
+
+  // Keep quickTime in sync with user preferences when loaded
+  useEffect(() => {
+    if (preferences?.defaultDayStart) setQuickTime(preferences.defaultDayStart)
+  }, [preferences])
+
+  const calculateQuickEnd = (start: string, duration: number) => {
+    if (!start) return ""
+    const [h, m] = start.split(":").map(Number)
+    const date = new Date()
+    date.setHours(h, m + duration)
+    return date.toTimeString().slice(0, 5)
+  }
+
+  const loadBlocks = async () => {
+    if (!user) return
+    const allBlocks = await getTimeBlocks(user.id)
+    const dateStr = formatDate(currentDate)
+    const dayBlocks = allBlocks.filter((b) => b.date === dateStr)
+    setBlocks(dayBlocks)
+  }
+
+  const handlePreviousDay = () => {
+    setCurrentDate((prev) => addDays(prev, -1))
+  }
+
+  const handleNextDay = () => {
+    setCurrentDate((prev) => addDays(prev, 1))
+  }
+
+  const handleToday = () => {
+    setCurrentDate(new Date())
+  }
+
+  const handleBlockClick = (block: TimeBlock) => {
+    setSelectedBlock(block)
+    setIsModalOpen(true)
+  }
+
+  const handleSaveBlock = async (updatedBlock: TimeBlock) => {
+    if (!user) return
+    await updateTimeBlock(updatedBlock)
+    await loadBlocks()
+    toast({
+      title: "Block updated",
+      description: "Your time block has been updated successfully",
+    })
+  }
+
+  const handleDeleteBlock = async () => {
+    if (!user || !selectedBlock) return
+    await deleteTimeBlock(selectedBlock.id)
+    setIsModalOpen(false)
+    setSelectedBlock(null)
+    await loadBlocks()
+    toast({
+      title: "Block deleted",
+      description: "Your time block has been removed",
+    })
+  }
+
+  const handleToggleComplete = async () => {
+    if (!user || !selectedBlock) return
+    const updatedBlock = { ...selectedBlock, completed: !selectedBlock.completed }
+    await updateTimeBlock(updatedBlock)
+    setSelectedBlock(updatedBlock)
+    await loadBlocks()
+    toast({
+      title: selectedBlock.completed ? "Marked as incomplete" : "Marked as complete",
+      description: `"${selectedBlock.title}" status updated`,
+    })
+  }
+
+  const handleSetAsDefault = async () => {
+    if (!user || blocks.length === 0) {
+      toast({
+        title: "No blocks to save",
+        description: "Add some time blocks to this day before setting as default",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const dayOfWeek = currentDate.getDay()
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    const template: DefaultTemplate = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      name: `${dayNames[dayOfWeek]} Template`,
+      dayOfWeek,
+      blocks: blocks.map((block) => ({
+        title: block.title,
+        description: block.description,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        category: block.category,
+        repeatDaily: block.repeatDaily,
+        color: block.color,
+      })),
+      createdAt: new Date().toISOString(),
+    }
+
+  const existingTemplates = await getDefaultTemplates(user.id)
+    const existingTemplate = existingTemplates.find((t) => t.dayOfWeek === dayOfWeek)
+    if (existingTemplate) {
+      template.id = existingTemplate.id
+    }
+
+  await saveDefaultTemplate(template)
+
+    toast({
+      title: "Template saved",
+      description: `${dayNames[dayOfWeek]}'s schedule has been saved as your default template`,
+    })
+  }
+
+  const isToday = isSameDay(currentDate, new Date())
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const cardClass =
+    "backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-xl border border-white/20 p-6 mb-6"
+
+  return (
+    <div className="min-h-screen">
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950 -z-10" />
+
+      <DashboardNav />
+
+  <main className="container mx-auto px-4 pt-24 pb-12 md:pl-72">
+        {/* Date navigation */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                  {formatDisplayDate(formatDate(currentDate))}
+                </h1>
+                {isToday && <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">Today</p>}
+              </div>
+
+              <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handlePreviousDay} className="gap-2 bg-transparent">
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              {!isToday && (
+                <Button variant="outline" size="sm" onClick={handleToday}>
+                  Today
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleNextDay} className="gap-2 bg-transparent">
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+  {/* Timetable grid */}
+  <Card className="mb-0 mt-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Schedule</h2>
+            <div className="flex items-center gap-3">
+              {blocks.length > 0 && (
+                <Button onClick={handleSetAsDefault} variant="outline" className="gap-2 bg-transparent">
+                  <Save className="w-4 h-4" />
+                  Set as Default
+                </Button>
+              )}
+
+              {/* Quick set time controls (visible on mobile and up) */}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  value={quickTime}
+                  onChange={(e) => setQuickTime(e.target.value)}
+                  className="h-10 w-28 bg-white/60 dark:bg-gray-800/60"
+                />
+
+                <select
+                  value={String(quickDuration)}
+                  onChange={(e) => setQuickDuration(Number(e.target.value))}
+                  className="h-10 bg-white/60 dark:bg-gray-800/60 rounded-md border border-gray-200 dark:border-gray-800 px-2 text-sm"
+                >
+                  <option value={30}>30m</option>
+                  <option value={45}>45m</option>
+                  <option value={60}>1h</option>
+                  <option value={90}>1h 30m</option>
+                  <option value={120}>2h</option>
+                </select>
+                <div className="text-xs text-gray-500 hidden md:block">Ends: {calculateQuickEnd(quickTime, quickDuration)}</div>
+              </div>
+
+              <Button
+                onClick={() => router.push(`/dashboard/new?date=${formatDate(currentDate)}&time=${quickTime}&duration=${quickDuration}`)}
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              >
+                <Plus className="w-4 h-4" />
+                Add Time Block
+              </Button>
+            </div>
+          </div>
+
+          {blocks.length === 0 ? (
+            <EmptyState
+              title="No time blocks yet"
+              description="Start planning your day by adding your first time block"
+              ctaText="Create Time Block"
+              onCta={() => router.push(`/dashboard/new?date=${formatDate(currentDate)}`)}
+            />
+          ) : (
+            <TimeGrid
+              startTime={preferences.defaultDayStart}
+              endTime={preferences.defaultDayEnd}
+              blocks={blocks}
+              onTimeSlotClick={(time) => router.push(`/dashboard/new?date=${formatDate(currentDate)}&time=${time}`)}
+              onBlockClick={handleBlockClick}
+            />
+          )}
+        </Card>
+
+        {/* Daily stats */}
+        {blocks.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Blocks</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{blocks.length}</p>
+            </div>
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</p>
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                {blocks.filter((b) => b.completed).length}
+              </p>
+            </div>
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completion Rate</p>
+              <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                {blocks.length > 0 ? Math.round((blocks.filter((b) => b.completed).length / blocks.length) * 100) : 0}%
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {selectedBlock && (
+        <TimeBlockModal
+          block={selectedBlock}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false)
+            setSelectedBlock(null)
+          }}
+          onSave={handleSaveBlock}
+          onDelete={handleDeleteBlock}
+          onToggleComplete={handleToggleComplete}
+        />
+      )}
+    </div>
+  )
+}
