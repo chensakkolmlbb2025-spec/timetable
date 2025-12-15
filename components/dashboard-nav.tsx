@@ -17,11 +17,15 @@ import {
   ChevronRight,
   User,
   MoreVertical,
-  Rocket
+  Rocket,
+  Sun,
+  Moon,
+  Monitor
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/ui/logo"
 import { useAuth } from "@/components/auth-provider"
+import { useTheme } from "@/components/theme-provider"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -44,6 +48,7 @@ const NAV_ITEMS = [
 export function DashboardNav() {
   const pathname = usePathname()
   const { user, signOut } = useAuth()
+  const { theme, setTheme, resolvedTheme } = useTheme()
   
   // State for hydration safe rendering
   const [mounted, setMounted] = useState(false)
@@ -143,6 +148,45 @@ export function DashboardNav() {
 
               {/* User Profile Footer */}
               <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                 {/* Theme Toggle */}
+                 <div className="flex items-center justify-center gap-1 p-1 mb-3 rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                   <button
+                     onClick={() => setTheme('light')}
+                     className={cn(
+                       "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium transition-all",
+                       theme === 'light' 
+                         ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                         : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                     )}
+                   >
+                     <Sun className="w-3.5 h-3.5" />
+                     Light
+                   </button>
+                   <button
+                     onClick={() => setTheme('dark')}
+                     className={cn(
+                       "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium transition-all",
+                       theme === 'dark' 
+                         ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                         : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                     )}
+                   >
+                     <Moon className="w-3.5 h-3.5" />
+                     Dark
+                   </button>
+                   <button
+                     onClick={() => setTheme('system')}
+                     className={cn(
+                       "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-xs font-medium transition-all",
+                       theme === 'system' 
+                         ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                         : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                     )}
+                   >
+                     <Monitor className="w-3.5 h-3.5" />
+                     Auto
+                   </button>
+                 </div>
                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
                     <UserAvatar user={user} className="w-10 h-10" />
                     <div className="flex-1 min-w-0">
@@ -205,6 +249,56 @@ export function DashboardNav() {
 
         {/* Footer / User Profile */}
         <div className="p-3 border-t border-zinc-100 dark:border-zinc-800">
+          {/* Theme Toggle for Desktop */}
+          {!collapsed ? (
+            <div className="flex items-center justify-center gap-1 p-1 mb-3 rounded-lg bg-zinc-100 dark:bg-zinc-800">
+              <button
+                onClick={() => setTheme('light')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all",
+                  theme === 'light' 
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                )}
+                aria-label="Light theme"
+              >
+                <Sun className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all",
+                  theme === 'dark' 
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                )}
+                aria-label="Dark theme"
+              >
+                <Moon className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all",
+                  theme === 'system' 
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                )}
+                aria-label="System theme"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className="w-full flex items-center justify-center p-2 mb-3 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          )}
+          
           <div className={cn(
             "relative flex items-center p-2 rounded-xl transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 group cursor-pointer",
             collapsed ? "justify-center" : "gap-3"

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 import { ToastProvider } from "@/hooks/use-toast"
 import SidebarStateSync from "@/components/sidebar-state-sync"
 
@@ -111,10 +112,12 @@ export default function RootLayout({
         mismatch errors in development. This is a dev-time warning only.
       */}
       <body suppressHydrationWarning className={`font-sans antialiased`}>
-        <SidebarStateSync />
-        <ToastProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </ToastProvider>
+        <ThemeProvider>
+          <SidebarStateSync />
+          <ToastProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ToastProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

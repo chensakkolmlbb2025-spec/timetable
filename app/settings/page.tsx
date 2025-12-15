@@ -8,16 +8,17 @@ import { Input } from "@/components/ui/input"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { Card } from "@/components/ui"
 import { useAuth } from "@/components/auth-provider"
+import { useTheme } from "@/components/theme-provider"
 import { getUserPreferences, saveUserPreferences } from "@/lib/storage"
 import type { UserPreferences } from "@/lib/types"
 
 export default function SettingsPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const { theme, setTheme } = useTheme()
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [dayStart, setDayStart] = useState("06:00")
   const [dayEnd, setDayEnd] = useState("22:00")
-  const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto")
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -33,44 +34,33 @@ export default function SettingsPage() {
         setPreferences(prefs)
         setDayStart(prefs.defaultDayStart)
         setDayEnd(prefs.defaultDayEnd)
-        setTheme(prefs.theme)
+        // Sync theme from preferences to provider if different
+        if (prefs.theme && prefs.theme !== theme) {
+          setTheme(prefs.theme === 'auto' ? 'system' : prefs.theme)
+        }
       }
       run()
     }
-  }, [user, loading, router])
+  }, [user, loading, router, setTheme, theme])
 
-  useEffect(() => {
-    // Apply theme
-    const root = document.documentElement
-    if (theme === "dark") {
-      root.classList.add("dark")
-    } else if (theme === "light") {
-      root.classList.remove("dark")
-    } else {
-      // Auto mode
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      if (prefersDark) {
-        root.classList.add("dark")
-      } else {
-        root.classList.remove("dark")
-      }
-    }
-  }, [theme])
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
+    setTheme(newTheme)
+  }
 
   const handleSave = async () => {
     if (!user || !preferences) return
 
-  setSaving(true)
+    setSaving(true)
     setMessage("")
 
     const updatedPrefs: UserPreferences = {
       ...preferences,
       defaultDayStart: dayStart,
       defaultDayEnd: dayEnd,
-      theme,
+      theme: theme === 'system' ? 'auto' : theme as 'light' | 'dark',
     }
 
-  await saveUserPreferences(updatedPrefs)
+    await saveUserPreferences(updatedPrefs)
     setMessage("Settings saved successfully!")
     setSaving(false)
 
@@ -91,7 +81,7 @@ export default function SettingsPage() {
 
       <DashboardNav />
 
-  <main className="container mx-auto px-4 pt-24 pb-12 md:pl-72">
+      <main className="container mx-auto px-4 pt-24 pb-12 md:pl-72">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
 
@@ -117,7 +107,7 @@ export default function SettingsPage() {
 
             <div className="grid grid-cols-3 gap-4">
               <button
-                onClick={() => setTheme("light")}
+                onClick={() => handleThemeChange("light")}
                 className={`p-6 rounded-2xl border-2 transition-all ${
                   theme === "light"
                     ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
@@ -129,7 +119,7 @@ export default function SettingsPage() {
               </button>
 
               <button
-                onClick={() => setTheme("dark")}
+                onClick={() => handleThemeChange("dark")}
                 className={`p-6 rounded-2xl border-2 transition-all ${
                   theme === "dark"
                     ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
@@ -141,15 +131,15 @@ export default function SettingsPage() {
               </button>
 
               <button
-                onClick={() => setTheme("auto")}
+                onClick={() => handleThemeChange("system")}
                 className={`p-6 rounded-2xl border-2 transition-all ${
-                  theme === "auto"
+                  theme === "system"
                     ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
                     : "border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-gray-300"
                 }`}
               >
                 <Monitor className="w-8 h-8 mx-auto mb-3 text-gray-600 dark:text-gray-400" />
-                <p className="text-sm font-medium text-gray-900 dark:text-white text-center">Auto</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white text-center">System</p>
               </button>
             </div>
           </Card>
