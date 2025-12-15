@@ -1,40 +1,221 @@
-name: Daily Telegram Export
+name: 🤖 Daily Telegram Export - Ultimate Edition
 
 on:
   schedule:
-    # Runs at 21:00 UTC every day (04:00 Cambodia UTC+7)
+    # Primary schedule: 21:00 UTC (04:00 Cambodia UTC+7)
     - cron: '0 21 * * *'
-  workflow_dispatch: {}
+    # Backup schedule 1: 21:15 UTC (04:15 Cambodia) - 15 min later
+    - cron: '15 21 * * *'
+    # Backup schedule 2: 21:30 UTC (04:30 Cambodia) - 30 min later
+    - cron: '30 21 * * *'
+  workflow_dispatch:
+    inputs:
+      force_retry:
+        description: 'Force send even if already sent today'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  post-export:
+  send-daily-report:
+    name: Send Daily Report to Telegram
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
     steps:
-      - name: Trigger daily export cron
+      - name: 🔍 Check if already sent today
+        id: check_sent
+        env:
+          CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          STATUS_URL="${CRON_TARGET_URL%/}/api/export/status?date=$TODAY"
+          
+          echo "📅 Checking if report already sent for $TODAY"
+          
+          # Try to get export status
+          RESPONSE=$(curl -sfS -H "x-cron-secret: $CRON_SECRET" "$STATUS_URL" 2>&1 || echo '{"success":false}')
+          echo "Response: $RESPONSE"
+          
+          # Check if already sent successfully
+          if echo "$RESPONSE" | grep -q '"status":"success"'; then
+            echo "✅ Report already sent successfully today"
+            if [ "${{ inputs.force_retry }}" != "true" ]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Force retry enabled, will send anyway"
+              echo "skip=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "📤 No successful send found, will proceed"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🚀 Send Daily Report (Attempt 1)
+        id: attempt1
+        if: steps.check_sent.outputs.skip != 'true'
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
+        continue-on-error: true
         run: |
           if [ -z "$CRON_TARGET_URL" ]; then
-            echo "CRON_TARGET_URL is not set. Set this secret to the public URL of your deployed site, e.g. https://your-site.vercel.app" >&2
+            echo "❌ ERROR: CRON_TARGET_URL is not set"
+            echo "Please set this secret to your deployed site URL, e.g. https://your-site.vercel.app"
             exit 1
           fi
 
           CRON_ENDPOINT="${CRON_TARGET_URL%/}/api/cron/daily-report"
-          echo "Calling $CRON_ENDPOINT"
-          # Use curl with retries for reliability
-          curl --retry 3 --retry-delay 5 -sfS -X POST "$CRON_ENDPOINT" -H "x-cron-secret: $CRON_SECRET" -o /tmp/cron-response.json || true
-          echo "Response:" && cat /tmp/cron-response.json || true
-      - name: Validate deployment after cron
+          echo "📡 Calling $CRON_ENDPOINT (Attempt 1)"
+          
+          # Use curl with aggressive retries
+          RESPONSE=$(curl --retry 5 --retry-delay 3 --retry-all-errors \
+            --max-time 60 --connect-timeout 10 \
+            -sfS -X POST "$CRON_ENDPOINT" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            2>&1 || echo '{"success":false,"error":"curl_failed"}')
+          
+          echo "📨 Response: $RESPONSE"
+          
+          # Save response for later inspection
+          echo "$RESPONSE" > /tmp/attempt1.json
+          
+          # Check if successful
+          if echo "$RESPONSE" | grep -q '"success":true'; then
+            echo "✅ SUCCESS: Report sent successfully"
+            echo "result=success" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "⚠️ FAILED: Attempt 1 did not succeed"
+            echo "result=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: ⏳ Wait before retry
+        if: steps.attempt1.outcome == 'failure'
+        run: |
+          echo "⏳ Waiting 30 seconds before retry..."
+          sleep 30
+
+      - name: 🔄 Send Daily Report (Attempt 2 - Retry)
+        id: attempt2
+        if: steps.attempt1.outcome == 'failure'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
+        continue-on-error: true
+        run: |
+          CRON_ENDPOINT="${CRON_TARGET_URL%/}/api/cron/daily-report"
+          echo "📡 Calling $CRON_ENDPOINT (Attempt 2 - RETRY)"
+          
+          RESPONSE=$(curl --retry 5 --retry-delay 5 --retry-all-errors \
+            --max-time 90 --connect-timeout 15 \
+            -sfS -X POST "$CRON_ENDPOINT" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            2>&1 || echo '{"success":false,"error":"curl_failed"}')
+          
+          echo "📨 Response: $RESPONSE"
+          echo "$RESPONSE" > /tmp/attempt2.json
+          
+          if echo "$RESPONSE" | grep -q '"success":true'; then
+            echo "✅ SUCCESS: Report sent on retry"
+            echo "result=success" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "❌ FAILED: Attempt 2 also failed"
+            echo "result=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: ⏳ Wait before final retry
+        if: steps.attempt2.outcome == 'failure'
+        run: |
+          echo "⏳ Waiting 60 seconds before final retry..."
+          sleep 60
+
+      - name: 🆘 Send Daily Report (Attempt 3 - FINAL)
+        id: attempt3
+        if: steps.attempt2.outcome == 'failure'
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
         run: |
-          VALIDATE_URL="${CRON_TARGET_URL%/}/api/deploy/validate"
-          echo "Calling $VALIDATE_URL"
-          curl -sfS -H "x-cron-secret: $CRON_SECRET" "$VALIDATE_URL" -o /tmp/validate.json
-          cat /tmp/validate.json
-          if ! grep -q '"ok":true' /tmp/validate.json; then
-            echo "Validation failed: see /tmp/validate.json" >&2
+          CRON_ENDPOINT="${CRON_TARGET_URL%/}/api/cron/daily-report"
+          echo "📡 Calling $CRON_ENDPOINT (Attempt 3 - FINAL RETRY)"
+          
+          RESPONSE=$(curl --retry 10 --retry-delay 10 --retry-all-errors \
+            --max-time 120 --connect-timeout 20 \
+            -sfS -X POST "$CRON_ENDPOINT" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            2>&1 || echo '{"success":false,"error":"curl_failed"}')
+          
+          echo "📨 Response: $RESPONSE"
+          echo "$RESPONSE" > /tmp/attempt3.json
+          
+          if echo "$RESPONSE" | grep -q '"success":true'; then
+            echo "✅ SUCCESS: Report sent on final retry"
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ CRITICAL FAILURE: All 3 attempts failed"
+            echo "Response from all attempts:"
+            echo "Attempt 1:" && cat /tmp/attempt1.json || echo "No response"
+            echo "Attempt 2:" && cat /tmp/attempt2.json || echo "No response"
+            echo "Attempt 3:" && cat /tmp/attempt3.json || echo "No response"
+            echo "result=failed" >> $GITHUB_OUTPUT
             exit 1
           fi
+
+      - name: ✅ Validate deployment health
+        if: always()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
+        run: |
+          echo "🔍 Validating deployment health..."
+          VALIDATE_URL="${CRON_TARGET_URL%/}/api/deploy/validate"
+          
+          VALIDATION=$(curl -sfS -H "x-cron-secret: $CRON_SECRET" "$VALIDATE_URL" 2>&1 || echo '{"ok":false}')
+          echo "Validation response: $VALIDATION"
+          
+          if echo "$VALIDATION" | grep -q '"ok":true'; then
+            echo "✅ Deployment is healthy"
+          else
+            echo "⚠️ WARNING: Deployment validation failed"
+            echo "This may indicate configuration issues"
+          fi
+
+      - name: 📊 Final Status Summary
+        if: always()
+        run: |
+          echo "================================"
+          echo "📊 DAILY REPORT STATUS SUMMARY"
+          echo "================================"
+          echo "Date: $(date -u +%Y-%m-%d)"
+          echo "Time: $(date -u +%H:%M:%S) UTC"
+          echo ""
+          
+          if [ "${{ steps.check_sent.outputs.skip }}" == "true" ]; then
+            echo "Status: ⏭️  SKIPPED (Already sent today)"
+          elif [ "${{ steps.attempt1.outputs.result }}" == "success" ]; then
+            echo "Status: ✅ SUCCESS (Attempt 1)"
+          elif [ "${{ steps.attempt2.outputs.result }}" == "success" ]; then
+            echo "Status: ✅ SUCCESS (Attempt 2)"
+          elif [ "${{ steps.attempt3.outputs.result }}" == "success" ]; then
+            echo "Status: ✅ SUCCESS (Attempt 3)"
+          else
+            echo "Status: ❌ FAILED (All attempts)"
+            echo ""
+            echo "⚠️  ATTENTION REQUIRED"
+            echo "The daily report could not be sent after 3 attempts."
+            echo "Please check:"
+            echo "  1. Vercel deployment status"
+            echo "  2. Telegram bot token validity"
+            echo "  3. Supabase connection"
+            echo "  4. GitHub secrets configuration"
+            exit 1
+          fi
+          echo "================================"
