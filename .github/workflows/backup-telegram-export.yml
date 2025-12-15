@@ -13,15 +13,26 @@ jobs:
   backup-send:
     name: Backup Send (Safety Net)
     runs-on: ubuntu-latest
+    concurrency:
+      group: backup-daily-export-${{ github.ref }}
+      cancel-in-progress: true
     timeout-minutes: 10
     
     steps:
-      - name: 🔍 Check if primary workflow succeeded
+      - name: 🔍 Check environment & if primary workflow succeeded
         id: check_primary
         env:
           CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          if [ -z "$CRON_TARGET_URL" ]; then
+            echo "❌ ERROR: CRON_TARGET_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ ERROR: CRON_SECRET secret is not set"
+            exit 1
+          fi
           TODAY=$(date -u +%Y-%m-%d)
           STATUS_URL="${CRON_TARGET_URL%/}/api/export/status?date=$TODAY"
           
@@ -55,7 +66,8 @@ jobs:
             -H "x-cron-secret: $CRON_SECRET" \
             -H "Content-Type: application/json" \
             2>&1 || echo '{"success":false}')
-          
+          echo "$RESPONSE" > /tmp/backup_attempt.json
+          cat /tmp/backup_attempt.json
           echo "📨 Response: $RESPONSE"
           
           if echo "$RESPONSE" | grep -q '"success":true'; then
@@ -82,3 +94,22 @@ jobs:
             echo "Status: 🆘 BACKUP ACTIVATED (Primary may have failed)"
           fi
           echo "================================"
+
+      - name: 📦 Upload backup attempt log as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-daily-export-log-${{ runner.os }}-${{ github.run_id }}
+          path: /tmp/backup_attempt.json
+
+      - name: 🐞 Create GitHub Issue on backup failure
+        if: ${{ always() && steps.check_primary.outputs.skip != 'true' && failure() }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const title = `Backup daily export failed on ${new Date().toISOString().slice(0,10)}`;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const body = `Backup workflow attempted to send the daily report but failed. Run: ${runUrl}\n\nPlease investigate primary workflow and backup send logs.`;
+            await github.rest.issues.create({ owner, repo, title, body, labels: ["type: incident", "cron"] });

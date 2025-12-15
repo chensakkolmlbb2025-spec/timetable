@@ -20,15 +20,27 @@ jobs:
   send-daily-report:
     name: Send Daily Report to Telegram
     runs-on: ubuntu-latest
+    concurrency:
+      group: daily-telegram-export-${{ github.ref }}
+      cancel-in-progress: true
     timeout-minutes: 10
     
     steps:
-      - name: 🔍 Check if already sent today
+      - name: 🔍 Check environment & if already sent today
         id: check_sent
         env:
           CRON_TARGET_URL: ${{ secrets.CRON_TARGET_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          # Fail early if essential secrets are missing
+          if [ -z "$CRON_TARGET_URL" ]; then
+            echo "❌ ERROR: CRON_TARGET_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ ERROR: CRON_SECRET secret is not set"
+            exit 1
+          fi
           TODAY=$(date -u +%Y-%m-%d)
           STATUS_URL="${CRON_TARGET_URL%/}/api/export/status?date=$TODAY"
           
@@ -81,6 +93,8 @@ jobs:
           
           # Save response for later inspection
           echo "$RESPONSE" > /tmp/attempt1.json
+          # Save attempt response for debugging
+          cat /tmp/attempt1.json
           
           # Check if successful
           if echo "$RESPONSE" | grep -q '"success":true'; then
@@ -119,6 +133,7 @@ jobs:
           
           echo "📨 Response: $RESPONSE"
           echo "$RESPONSE" > /tmp/attempt2.json
+          cat /tmp/attempt2.json
           
           if echo "$RESPONSE" | grep -q '"success":true'; then
             echo "✅ SUCCESS: Report sent on retry"
@@ -155,6 +170,7 @@ jobs:
           
           echo "📨 Response: $RESPONSE"
           echo "$RESPONSE" > /tmp/attempt3.json
+          cat /tmp/attempt3.json
           
           if echo "$RESPONSE" | grep -q '"success":true'; then
             echo "✅ SUCCESS: Report sent on final retry"
@@ -219,3 +235,25 @@ jobs:
             exit 1
           fi
           echo "================================"
+
+      - name: 📦 Upload attempt logs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-export-attempt-logs-${{ runner.os }}-${{ github.run_id }}
+          path: |
+            /tmp/attempt1.json
+            /tmp/attempt2.json
+            /tmp/attempt3.json
+
+      - name: 🐞 Create GitHub Issue on failure
+        if: ${{ always() && steps.attempt3.outcome == 'failure' && steps.check_sent.outputs.skip != 'true' }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const title = `Daily export failed on ${new Date().toISOString().slice(0,10)}`;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const body = `The daily Telegram export workflow failed after multiple attempts. Run: ${runUrl}\n\nAttempts logs are attached as artifacts. Please investigate deployment, telegram, and supabase connectivity.`;
+            await github.rest.issues.create({ owner, repo, title, body, labels: ["type: incident", "cron"] });
