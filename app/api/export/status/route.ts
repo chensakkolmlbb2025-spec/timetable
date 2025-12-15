@@ -7,11 +7,21 @@ export async function GET(req: Request) {
     const date = url.searchParams.get("date")
     if (!date) return NextResponse.json({ success: false, message: "missing date" }, { status: 400 })
 
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
+    
+    // Try both getSession and getUser for better reliability
+    let userId: string | null = null
     const { data: sessionData } = await supabase.auth.getSession()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sd: any = sessionData ?? {}
-    const userId = sd?.session?.user?.id || sd?.user?.id
+    
+    if (sessionData?.session?.user?.id) {
+      userId = sessionData.session.user.id
+    } else {
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData?.user?.id) {
+        userId = userData.user.id
+      }
+    }
+    
   // If not authenticated, return an OK response with an empty record so the
   // client can handle this case without producing a noisy 401 in the browser
   // network panel. The UI still treats a null record as "no status".

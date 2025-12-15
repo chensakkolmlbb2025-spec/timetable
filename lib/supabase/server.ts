@@ -1,10 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export function createClient() {
-  // cookies() may be a sync or async API depending on the Next version and types.
-  // Cast to any to avoid typing issues and call the available methods directly.
-  const cookieStore: any = cookies()
+export async function createClient() {
+  // In Next.js 15+, cookies() returns a Promise
+  const cookieStore: any = await cookies()
 
   // Adapter to support different Next.js `cookies()` shapes across versions.
   function getCookie(name: string) {
@@ -20,6 +19,7 @@ export function createClient() {
       if (typeof cookieStore === "object" && name in cookieStore) return cookieStore[name]?.value
     } catch (e) {
       // swallow and return undefined
+      console.error("getCookie error:", e)
     }
     return undefined
   }
@@ -31,6 +31,7 @@ export function createClient() {
       if (typeof cookieStore.set === "object") return (cookieStore.set as any)[name] = value
     } catch (e) {
       // swallow
+      console.error("setCookie error:", e)
     }
   }
 
@@ -41,6 +42,7 @@ export function createClient() {
       if (typeof cookieStore.set === "function") return cookieStore.set({ name, value: "", ...options })
     } catch (e) {
       // swallow
+      console.error("removeCookie error:", e)
     }
   }
 

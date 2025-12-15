@@ -14,22 +14,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Missing or invalid date" }, { status: 400 })
     }
 
-    // Verify session and get current user id
-    const supabase = createServerClient()
+    // Verify session and get current user id - try multiple methods
+    const supabase = await createServerClient()
+    
+    // Method 1: Try getSession
+    let userId: string | null = null
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError) {
-      console.error("Failed to get session:", sessionError)
-      // Return 200 with structured error to avoid noisy 401 in browser devtools; the client
-      // will treat success:false as an error and prompt the user to re-authenticate.
-      return NextResponse.json({ success: false, message: "Auth error" })
+    
+    if (!sessionError && sessionData?.session?.user?.id) {
+      userId = sessionData.session.user.id
+      console.log("export/send: Got user from getSession:", userId)
+    } else {
+      // Method 2: Try getUser (more reliable on some deployments)
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (!userError && userData?.user?.id) {
+        userId = userData.user.id
+        console.log("export/send: Got user from getUser:", userId)
+      } else {
+        console.error("export/send: Failed to get user via both methods", { 
+          sessionError, 
+          userError,
+          hasSession: !!sessionData?.session,
+          hasUser: !!userData?.user
+        })
+        return NextResponse.json({ 
+          success: false, 
+          message: "Not authenticated. Please sign in again." 
+        })
+      }
     }
-    // Normalize session shapes
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sd: any = sessionData ?? {}
-    const userId = sd?.session?.user?.id || sd?.user?.id
+
     if (!userId) {
-      // Soft-fail for clients (see note above)
-      return NextResponse.json({ success: false, message: "Not authenticated" })
+      return NextResponse.json({ 
+        success: false, 
+        message: "Not authenticated. Please sign in again." 
+      })
     }
 
   // Fetch blocks using admin client to avoid RLS surprises but scoped to this user
