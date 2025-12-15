@@ -179,11 +179,11 @@ export function MissionCard({
             {difficulty.label}
           </div>
 
-          {/* Timeblock link indicator */}
+          {/* Timeblock link indicator - shows when scheduled to timetable */}
           {mission.timeblock_id && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-200 dark:border-purple-400/30">
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-400/30">
               <Clock className="w-3 h-3" />
-              <span>Linked</span>
+              <span>📅 On Timetable</span>
             </div>
           )}
         </div>

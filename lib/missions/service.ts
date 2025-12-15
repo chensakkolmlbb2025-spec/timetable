@@ -50,17 +50,88 @@ function getTodayEnd(): string {
 }
 
 // ============================================================================
+// HELPER: Create Timeblock for Mission
+// ============================================================================
+
+// Color mapping for categories
+const CATEGORY_COLORS: Record<string, string> = {
+  work: '#3B82F6',      // blue
+  personal: '#8B5CF6',  // purple
+  health: '#F43F5E',    // rose
+  learning: '#10B981',  // emerald
+  social: '#F59E0B',    // amber
+  other: '#6B7280',     // gray
+}
+
+/**
+ * Create a timeblock for a scheduled mission
+ */
+async function createTimeblockForMission(
+  supabase: ReturnType<typeof getClient>,
+  userId: string,
+  missionTitle: string,
+  missionDescription: string | null,
+  scheduledDate: string,
+  scheduledStartTime: string,
+  scheduledEndTime: string,
+  category: 'work' | 'personal' | 'health' | 'learning' | 'social' | 'other' = 'work'
+): Promise<string> {
+  const timeblockId = crypto.randomUUID()
+  
+  const { error } = await supabase
+    .from('time_blocks')
+    .insert({
+      id: timeblockId,
+      user_id: userId,
+      title: `🎯 ${missionTitle}`,
+      description: missionDescription || `Mission: ${missionTitle}`,
+      date: scheduledDate,
+      start_time: scheduledStartTime,
+      end_time: scheduledEndTime,
+      category: category,
+      color: CATEGORY_COLORS[category] || CATEGORY_COLORS.other,
+      completed: false,
+      repeat_daily: false,
+      created_at: new Date().toISOString(),
+    })
+  
+  if (error) {
+    console.error('Failed to create timeblock for mission:', error)
+    throw new Error(`Failed to create timeblock: ${error.message}`)
+  }
+  
+  return timeblockId
+}
+
+// ============================================================================
 // CRUD OPERATIONS
 // ============================================================================
 
 /**
  * Create a new mission
+ * If scheduling data is provided, auto-creates a linked timeblock
  */
 export async function createMission(
   userId: string,
   data: MissionFormData
 ): Promise<Mission> {
   const supabase = getClient()
+  
+  let timeblockId = data.timeblock_id || null
+  
+  // If scheduling data is provided, create a timeblock first
+  if (data.scheduled_date && data.scheduled_start_time && data.scheduled_end_time) {
+    timeblockId = await createTimeblockForMission(
+      supabase,
+      userId,
+      data.title,
+      data.description || null,
+      data.scheduled_date,
+      data.scheduled_start_time,
+      data.scheduled_end_time,
+      data.category || 'work'
+    )
+  }
   
   const { data: mission, error } = await supabase
     .from('missions')
@@ -71,7 +142,7 @@ export async function createMission(
       deadline: data.deadline,
       priority: data.priority,
       difficulty: data.difficulty,
-      timeblock_id: data.timeblock_id || null,
+      timeblock_id: timeblockId,
       notes: data.notes || null,
       tags: data.tags || [],
       status: 'pending'

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Calendar, Target, Zap, Star, Clock, Link2 } from 'lucide-react'
+import { X, Calendar, Target, Zap, Star, Clock, CalendarClock, Briefcase, User, Heart, BookOpen, Users, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MissionFormData, MissionPriority, MissionDifficulty } from '@/lib/missions/types'
 
@@ -27,15 +27,30 @@ const difficultyOptions: Array<{ value: MissionDifficulty; label: string; color:
   { value: 'extreme', label: 'Extreme', color: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-300 dark:border-red-400/30' },
 ]
 
-export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: AddMissionModalProps) {
+const categoryOptions: Array<{ value: 'work' | 'personal' | 'health' | 'learning' | 'social' | 'other'; label: string; icon: typeof Briefcase; color: string }> = [
+  { value: 'work', label: 'Work', icon: Briefcase, color: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20 border-blue-300 dark:border-blue-400/30' },
+  { value: 'personal', label: 'Personal', icon: User, color: 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/20 border-purple-300 dark:border-purple-400/30' },
+  { value: 'health', label: 'Health', icon: Heart, color: 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-500/20 border-rose-300 dark:border-rose-400/30' },
+  { value: 'learning', label: 'Learning', icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 border-emerald-300 dark:border-emerald-400/30' },
+  { value: 'social', label: 'Social', icon: Users, color: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-400/30' },
+  { value: 'other', label: 'Other', icon: MoreHorizontal, color: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-500/20 border-gray-300 dark:border-gray-400/30' },
+]
+
+export function AddMissionModal({ isOpen, onClose, onSubmit }: AddMissionModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
   const [priority, setPriority] = useState<MissionPriority>('medium')
   const [difficulty, setDifficulty] = useState<MissionDifficulty>('medium')
-  const [timeblockId, setTimeblockId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // New scheduling fields
+  const [scheduleToTimetable, setScheduleToTimetable] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledStartTime, setScheduledStartTime] = useState('')
+  const [scheduledEndTime, setScheduledEndTime] = useState('')
+  const [category, setCategory] = useState<'work' | 'personal' | 'health' | 'learning' | 'social' | 'other'>('work')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,6 +63,26 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
       setError('Deadline is required')
       return
     }
+    
+    // Validate scheduling fields if enabled
+    if (scheduleToTimetable) {
+      if (!scheduledDate) {
+        setError('Schedule date is required when adding to timetable')
+        return
+      }
+      if (!scheduledStartTime) {
+        setError('Start time is required when adding to timetable')
+        return
+      }
+      if (!scheduledEndTime) {
+        setError('End time is required when adding to timetable')
+        return
+      }
+      if (scheduledStartTime >= scheduledEndTime) {
+        setError('End time must be after start time')
+        return
+      }
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -59,7 +94,13 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
         deadline,
         priority,
         difficulty,
-        timeblock_id: timeblockId,
+        // Include scheduling data if enabled
+        ...(scheduleToTimetable && {
+          scheduled_date: scheduledDate,
+          scheduled_start_time: scheduledStartTime,
+          scheduled_end_time: scheduledEndTime,
+          category,
+        }),
       })
       
       // Reset form
@@ -68,7 +109,11 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
       setDeadline('')
       setPriority('medium')
       setDifficulty('medium')
-      setTimeblockId(null)
+      setScheduleToTimetable(false)
+      setScheduledDate('')
+      setScheduledStartTime('')
+      setScheduledEndTime('')
+      setCategory('work')
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create mission')
@@ -80,6 +125,14 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
   const getTodayDate = () => {
     const today = new Date()
     return today.toISOString().split('T')[0]
+  }
+  
+  // Auto-set schedule date when deadline changes
+  const handleDeadlineChange = (newDeadline: string) => {
+    setDeadline(newDeadline)
+    if (!scheduledDate && newDeadline) {
+      setScheduledDate(newDeadline)
+    }
   }
 
   return (
@@ -189,7 +242,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                   <input
                     type="date"
                     value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
+                    onChange={(e) => handleDeadlineChange(e.target.value)}
                     min={getTodayDate()}
                     className={cn(
                       'w-full px-4 py-3 rounded-xl',
@@ -261,35 +314,130 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                   </div>
                 </div>
 
-                {/* Link to Timeblock */}
-                {timeblocks.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
-                      <div className="flex items-center gap-2">
-                        <Link2 className="w-4 h-4" />
-                        <span>Link to Timeblock</span>
-                      </div>
-                    </label>
-                    <select
-                      value={timeblockId || ''}
-                      onChange={(e) => setTimeblockId(e.target.value || null)}
-                      className={cn(
-                        'w-full px-4 py-3 rounded-xl',
-                        'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10',
-                        'text-gray-900 dark:text-white',
-                        'focus:outline-none focus:border-purple-400 dark:focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400/20',
-                        'transition-all duration-200'
-                      )}
+                {/* Schedule to Timetable Toggle */}
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={scheduleToTimetable}
+                        onChange={(e) => setScheduleToTimetable(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-white/10 rounded-full peer peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500 transition-colors"></div>
+                      <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CalendarClock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-white/70">
+                        Add to Timetable
+                      </span>
+                    </div>
+                  </label>
+                  
+                  {scheduleToTimetable && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20"
                     >
-                      <option value="" className="bg-white dark:bg-slate-900">No link</option>
-                      {timeblocks.map((tb) => (
-                        <option key={tb.id} value={tb.id} className="bg-white dark:bg-slate-900">
-                          {tb.title} ({tb.start_time})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                      <p className="text-xs text-indigo-600 dark:text-indigo-300">
+                        This will create a timeblock on your timetable for this mission.
+                      </p>
+                      
+                      {/* Schedule Date */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
+                          Schedule Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          onChange={(e) => setScheduledDate(e.target.value)}
+                          min={getTodayDate()}
+                          max={deadline || undefined}
+                          className={cn(
+                            'w-full px-4 py-3 rounded-xl',
+                            'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                            'text-gray-900 dark:text-white dark:[color-scheme:dark]',
+                            'focus:outline-none focus:border-indigo-400 dark:focus:border-blue-400/50 focus:ring-2 focus:ring-indigo-400/20',
+                            'transition-all duration-200'
+                          )}
+                        />
+                      </div>
+                      
+                      {/* Time Range */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
+                            Start Time *
+                          </label>
+                          <input
+                            type="time"
+                            value={scheduledStartTime}
+                            onChange={(e) => setScheduledStartTime(e.target.value)}
+                            className={cn(
+                              'w-full px-4 py-3 rounded-xl',
+                              'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                              'text-gray-900 dark:text-white dark:[color-scheme:dark]',
+                              'focus:outline-none focus:border-indigo-400 dark:focus:border-blue-400/50 focus:ring-2 focus:ring-indigo-400/20',
+                              'transition-all duration-200'
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
+                            End Time *
+                          </label>
+                          <input
+                            type="time"
+                            value={scheduledEndTime}
+                            onChange={(e) => setScheduledEndTime(e.target.value)}
+                            className={cn(
+                              'w-full px-4 py-3 rounded-xl',
+                              'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                              'text-gray-900 dark:text-white dark:[color-scheme:dark]',
+                              'focus:outline-none focus:border-indigo-400 dark:focus:border-blue-400/50 focus:ring-2 focus:ring-indigo-400/20',
+                              'transition-all duration-200'
+                            )}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Category */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
+                          Category
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {categoryOptions.map((opt) => {
+                            const Icon = opt.icon
+                            const isSelected = category === opt.value
+                            return (
+                              <motion.button
+                                key={opt.value}
+                                type="button"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setCategory(opt.value)}
+                                className={cn(
+                                  'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all',
+                                  isSelected 
+                                    ? opt.color
+                                    : 'bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-50 dark:hover:bg-white/10'
+                                )}
+                              >
+                                <Icon className="w-4 h-4" />
+                                <span className="text-xs">{opt.label}</span>
+                              </motion.button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
 
                 {/* Submit Button */}
                 <motion.button

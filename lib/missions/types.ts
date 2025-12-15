@@ -46,6 +46,11 @@ export interface MissionFormData {
   timeblock_id?: string | null
   notes?: string
   tags?: string[]
+  // Scheduling - auto-creates a timeblock
+  scheduled_date?: string      // YYYY-MM-DD
+  scheduled_start_time?: string // HH:mm
+  scheduled_end_time?: string   // HH:mm
+  category?: 'work' | 'personal' | 'health' | 'learning' | 'social' | 'other'
 }
 
 export interface MissionUpdateData extends Partial<MissionFormData> {
