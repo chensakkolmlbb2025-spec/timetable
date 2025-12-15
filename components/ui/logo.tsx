@@ -1,7 +1,12 @@
 "use client"
 import React from "react"
 
-export default function Logo({ className = "w-8 h-8", title = "Absolute Timetable" }: { className?: string; title?: string }) {
+interface LogoProps {
+  className?: string
+  title?: string
+}
+
+export function Logo({ className = "w-8 h-8", title = "Absolute Timetable" }: LogoProps) {
   return (
     <svg className={className} viewBox="0 0 64 64" role="img" aria-label={title} xmlns="http://www.w3.org/2000/svg">
       <title>{title}</title>
@@ -20,3 +25,6 @@ export default function Logo({ className = "w-8 h-8", title = "Absolute Timetabl
     </svg>
   )
 }
+
+// Default export for backward compatibility
+export default Logo
