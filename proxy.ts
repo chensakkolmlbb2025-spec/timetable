@@ -89,10 +89,10 @@ const RATE_LIMIT_CONFIG = {
 }
 
 // ============================================================================
-// MIDDLEWARE FUNCTION
+// PROXY FUNCTION
 // ============================================================================
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   
   // Create response with security headers
