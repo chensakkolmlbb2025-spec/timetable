@@ -1,53 +1,363 @@
-This is the "Absolute Timetable" web app — a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📅 Absolute Timetable
 
-## Getting Started
+<div align="center">
 
-First, run the development server:
+![Absolute Timetable](https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge)
+![Next.js](https://img.shields.io/badge/Next.js-16.0.10-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+**A beautiful, modern daily planner with glassmorphism design, PDF export, and Telegram integration.**
+
+[Features](#-features) • [Demo](#-demo) • [Installation](#-installation) • [Configuration](#-configuration) • [Deployment](#-deployment)
+
+</div>
+
+---
+
+## ✨ Features
+
+### 📱 **Responsive Design**
+- **Mobile-First**: Optimized for all screen sizes from 320px to 4K
+- **Touch-Optimized**: Large touch targets and smooth animations
+- **Adaptive UI**: Collapsible sidebar and mobile drawer navigation
+- **Dark Mode**: Beautiful glassmorphism with light/dark theme support
+
+### 🎯 **Time Management**
+- **Time Blocks**: Create and manage daily time blocks
+- **Quick Add**: Fast task creation with duration presets (15m, 30m, 1h, 2h)
+- **Repeat Daily**: Auto-create recurring tasks for each new day
+- **Completion Tracking**: Mark tasks complete with visual progress indicators
+- **Categories**: Color-coded categories (Work, Personal, Health, etc.)
+
+### 📊 **Analytics & Insights**
+- **Week View**: See your entire week at a glance
+- **Completion Stats**: Track daily and weekly completion rates
+- **Time Analytics**: Visualize how you spend your time
+- **Category Breakdown**: See time distribution across categories
+
+### 📄 **PDF Export**
+- **Automated Daily Reports**: GitHub Actions cron job sends PDFs at 04:00 Cambodia time
+- **Telegram Integration**: Receive daily plans directly in Telegram
+- **Manual Export**: Download or send PDFs on-demand
+- **A4 Format**: Print-ready with clean, professional layout
+
+### 🔐 **Authentication & Security**
+- **Supabase Auth**: Secure email/password authentication
+- **Row Level Security**: Database-level access control
+- **Protected Routes**: Server-side authentication guards
+- **Secure API**: CRON secret and admin UI protection
+
+### 🎨 **Design**
+- **Glassmorphism UI**: Modern frosted glass effect
+- **Smooth Animations**: 60fps transitions and interactions
+- **Gradient Accents**: Beautiful color gradients throughout
+- **Loading States**: Skeleton screens and loading indicators
+- **Accessibility**: WCAG 2.1 compliant with ARIA labels
+
+---
+
+## 🖼️ Demo
+
+**Production**: [https://timetable-one-azure.vercel.app](https://timetable-one-azure.vercel.app)
+
+### Screenshots
+
+#### Dashboard - Desktop
+![Dashboard Desktop](docs/screenshots/dashboard-desktop.png)
+
+#### Dashboard - Mobile
+![Dashboard Mobile](docs/screenshots/dashboard-mobile.png)
+
+#### Export Preview
+![Export Preview](docs/screenshots/export-preview.png)
+
+---
+
+## 🚀 Installation
+
+### Prerequisites
+
+- **Node.js** 18.x or higher
+- **npm** or **yarn** or **pnpm**
+- **Supabase** account (free tier works)
+- **Telegram Bot** (optional, for PDF delivery)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/chensakkolmlbb2025-spec/timetable.git
+cd timetable
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+### 3. Set Up Environment Variables
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` with your credentials:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+# Telegram (optional)
+TELEGRAM_BOT_TOKEN="your-bot-token"
+TELEGRAM_CHAT_ID="your-chat-id"
+
+# Security
+CRON_SECRET="your-strong-secret"
+ADMIN_UI_SECRET="your-admin-secret"
+```
+
+### 4. Set Up Database
+
+Run the database migrations in your Supabase SQL editor:
+
+```bash
+# 1. Create tables and RLS policies
+cat db/migrations/supabase-schema.sql | pbcopy  # macOS
+# or
+cat db/migrations/supabase-schema.sql | xclip   # Linux
+
+# Paste into Supabase SQL Editor and execute
+
+# 2. Add repeat_daily column
+cat db/migrations/2025-12-14-add-repeat-daily.sql | pbcopy
+
+# 3. Add exports log table
+cat db/migrations/2025-12-14-add-exports-log.sql | pbcopy
+
+# 4. Add telegram_response column
+cat db/migrations/2025-12-14-add-telegram-response.sql | pbcopy
+```
+
+### 5. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-## Database migrations (quick)
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-If you need to add the new DB column (`repeat_daily`) to the `time_blocks` table, there are two ways:
+---
 
-1) Run the migration script with a Postgres connection URL (local Supabase/Postgres):
+## ⚙️ Configuration
+
+### Supabase Setup
+
+1. **Create Project**: Go to [supabase.com](https://supabase.com) and create a new project
+2. **Get Credentials**: 
+   - Project URL: Settings → API → Project URL
+   - Anon Key: Settings → API → Project API keys → anon public
+   - Service Role: Settings → API → Project API keys → service_role (keep secure!)
+3. **Run Migrations**: Copy SQL from `db/migrations/` and execute in SQL Editor
+4. **Enable Email Auth**: Authentication → Providers → Email (enabled by default)
+
+### Telegram Bot Setup (Optional)
+
+1. **Create Bot**:
+   ```
+   Open Telegram and message @BotFather
+   Send: /newbot
+   Follow prompts to get your bot token
+   ```
+
+2. **Get Chat ID**:
+   ```bash
+   # Send a message to your bot, then run:
+   curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
+   
+   # Look for "chat":{"id": YOUR_CHAT_ID}
+   ```
+
+3. **Test Bot**:
+   ```bash
+   npm run test:telegram
+   ```
+
+### GitHub Actions Cron
+
+The app includes a daily export cron job. To set it up:
+
+1. **Add Repository Secrets**:
+   - Go to GitHub → Settings → Secrets and variables → Actions
+   - Add secrets:
+     - `CRON_TARGET_URL`: Your production URL (e.g., `https://timetable-one-azure.vercel.app`)
+     - `CRON_SECRET`: Same as in `.env.local`
+
+2. **Schedule**: Runs daily at 21:00 UTC (04:00 Cambodia time)
+3. **Workflow**: See `.github/workflows/daily-telegram-export.yml`
+
+---
+
+## 🌐 Deployment
+
+### Deploy to Vercel (Recommended)
+
+1. **Push to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git push origin main
+   ```
+
+2. **Connect to Vercel**:
+   - Go to [vercel.com](https://vercel.com)
+   - Import your GitHub repository
+   - Select "Next.js" framework preset
+
+3. **Add Environment Variables**:
+   - Copy all variables from `.env.local`
+   - Paste into Vercel → Project Settings → Environment Variables
+   - **Important**: Add variables for Production, Preview, and Development
+
+4. **Deploy**:
+   - Click "Deploy"
+   - Wait for build to complete
+   - Visit your production URL
+
+### Build Locally
 
 ```bash
-DATABASE_URL=postgres://<user>:<pass>@<host>:5432/<db> npm run migrate db/migrations/2025-12-14-add-repeat-daily.sql
+npm run build
+npm run start
 ```
 
-2) Run the SQL directly in the Supabase SQL editor (copy the contents of `db/migrations/2025-12-14-add-repeat-daily.sql`) and execute in your Supabase project.
+---
 
-Note: Use caution in production — test locally and consider a proper migration workflow (like Supabase CLI migrations) for long-term consistency.
+## 📁 Project Structure
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```
+absolute-timetable/
+├── app/                      # Next.js app router pages
+│   ├── (auth)/              # Authentication routes
+│   │   ├── sign-in/
+│   │   ├── sign-up/
+│   │   └── reset-password/
+│   ├── dashboard/           # Main dashboard
+│   ├── week/                # Week view
+│   ├── templates/           # Template management
+│   ├── analytics/           # Analytics page
+│   ├── export/              # PDF export & preview
+│   ├── settings/            # User settings
+│   ├── api/                 # API routes
+│   │   ├── cron/           # Cron endpoints
+│   │   ├── export/         # Export endpoints
+│   │   ├── telegram/       # Telegram webhook
+│   │   └── ...
+│   └── globals.css          # Global styles
+├── components/              # React components
+│   ├── ui/                 # UI primitives
+│   ├── auth-provider.tsx   # Auth context
+│   ├── dashboard-nav.tsx   # Navigation component
+│   └── ...
+├── lib/                     # Utilities & helpers
+│   ├── supabase/           # Supabase clients
+│   ├── telegram/           # Telegram integration
+│   ├── storage.ts          # Data layer
+│   ├── exports.ts          # Export management
+│   ├── pdf-export.ts       # PDF generation
+│   └── ...
+├── db/migrations/           # Database migrations
+├── .github/workflows/       # GitHub Actions
+├── public/                  # Static assets
+└── types/                   # TypeScript types
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Tech Stack
 
-## Learn More
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, React Server Components)
+- **Language**: [TypeScript 5](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS 3](https://tailwindcss.com/)
+- **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **Authentication**: [Supabase Auth](https://supabase.com/auth)
+- **PDF**: [jsPDF](https://github.com/parallax/jsPDF)
+- **Deployment**: [Vercel](https://vercel.com/)
+- **CI/CD**: [GitHub Actions](https://github.com/features/actions)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📝 Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Development
+npm run dev              # Start dev server with Turbopack
+npm run build            # Build for production
+npm run start            # Start production server
+npm run lint             # Run ESLint
 
-## Deploy on Vercel
+# Database
+npm run migrate          # Run database migrations
+npm run seed             # Seed database with test data
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Testing
+npm run test:telegram    # Test Telegram bot connection
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Design Inspiration**: Modern glassmorphism UI trends
+- **Icons**: [Lucide Icons](https://lucide.dev/)
+- **Fonts**: [Geist](https://vercel.com/font) by Vercel
+- **Deployment**: Powered by [Vercel](https://vercel.com/)
+
+---
+
+## 📧 Contact
+
+**Maintainer**: @chensakkolmlbb2025-spec
+
+**Project Link**: [https://github.com/chensakkolmlbb2025-spec/timetable](https://github.com/chensakkolmlbb2025-spec/timetable)
+
+**Live Demo**: [https://timetable-one-azure.vercel.app](https://timetable-one-azure.vercel.app)
+
+---
+
+<div align="center">
+
+Made with ❤️ using Next.js and Supabase
+
+⭐ Star this repo if you find it helpful!
+
+</div>
 
 ## Supabase configuration
 

@@ -79,39 +79,56 @@ export function DashboardNav() {
   return (
     <>
       {/* --- Mobile Header --- */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 border-b md:hidden bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-zinc-200 dark:border-zinc-800">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-14 sm:h-16 px-4 border-b md:hidden bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-zinc-200 dark:border-zinc-800 shadow-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="text-zinc-500">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setMobileOpen(true)} 
+            className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 h-10 w-10 active:scale-95 transition-transform"
+            aria-label="Open navigation menu"
+          >
             <Menu className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-2">
-            <Logo className="w-6 h-6 text-indigo-600" />
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100">Absolute</span>
-          </div>
+          <Link href="/dashboard" className="flex items-center gap-2 active:scale-95 transition-transform">
+            <Logo className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600" />
+            <span className="font-semibold text-base sm:text-lg text-zinc-900 dark:text-zinc-100">Absolute</span>
+          </Link>
         </div>
-        <UserAvatar user={user} />
+        <UserAvatar user={user} className="w-9 h-9 sm:w-10 sm:h-10" />
       </nav>
 
       {/* --- Mobile Drawer --- */}
       {mobileOpen && (
         <div className="fixed inset-0 z-[60] md:hidden">
+          {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity" 
-            onClick={() => setMobileOpen(false)} 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 animate-in fade-in" 
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation menu"
           />
-          <div className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-white dark:bg-zinc-950 shadow-2xl animate-in slide-in-from-left duration-300">
+          {/* Drawer */}
+          <div className="fixed inset-y-0 left-0 w-4/5 max-w-sm bg-white dark:bg-zinc-950 shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
             <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
-                  <Logo className="w-6 h-6 text-indigo-600" />
-                  <span className="font-bold text-lg tracking-tight">Absolute</span>
+                  <Logo className="w-7 h-7 text-indigo-600" />
+                  <span className="font-bold text-lg tracking-tight text-zinc-900 dark:text-zinc-100">Absolute</span>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
-                  <X className="w-4 h-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setMobileOpen(false)}
+                  className="h-9 w-9 active:scale-95 transition-transform"
+                  aria-label="Close menu"
+                >
+                  <X className="w-5 h-5" />
                 </Button>
               </div>
               
-              <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+              {/* Navigation Items */}
+              <div className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
                 {NAV_ITEMS.map((item) => (
                   <MobileNavItem 
                     key={item.href} 
@@ -122,14 +139,21 @@ export function DashboardNav() {
                 ))}
               </div>
 
-              <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
-                 <div className="flex items-center gap-3 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900">
-                    <UserAvatar user={user} />
+              {/* User Profile Footer */}
+              <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                 <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <UserAvatar user={user} className="w-10 h-10" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate text-zinc-900 dark:text-zinc-100">{user?.name || 'User'}</p>
-                      <p className="text-xs text-zinc-500 truncate">{user?.email || 'user@company.com'}</p>
+                      <p className="text-xs text-zinc-500 truncate">{user?.email || 'user@example.com'}</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8 text-zinc-400 hover:text-red-500">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={signOut} 
+                      className="h-9 w-9 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
+                      aria-label="Sign out"
+                    >
                       <LogOut className="w-4 h-4" />
                     </Button>
                  </div>
@@ -262,13 +286,16 @@ function MobileNavItem({ item, isActive, onClick }: { item: any, isActive: boole
   return (
     <Link href={item.href} onClick={onClick}>
       <div className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+        "flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all active:scale-[0.98] duration-200",
         isActive 
-          ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400" 
-          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 shadow-sm" 
+          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 active:bg-zinc-100 dark:active:bg-zinc-800"
       )}>
-        <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-        <span className="font-medium text-sm">{item.label}</span>
+        <Icon className="w-5 h-5 flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+        <span className="font-medium text-sm flex-1">{item.label}</span>
+        {isActive && (
+          <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shadow-sm" />
+        )}
       </div>
     </Link>
   )
