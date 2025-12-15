@@ -1,0 +1,17 @@
+# Robots.txt for Absolute Timetable
+# https://timetable-one-azure.vercel.app
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /reset-password
+
+# Sitemap
+Sitemap: https://timetable-one-azure.vercel.app/sitemap.xml
+
+# Crawl-delay for polite bots
+Crawl-delay: 1
