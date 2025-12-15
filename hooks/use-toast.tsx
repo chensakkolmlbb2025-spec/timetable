@@ -70,10 +70,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
     const toastItem: ToastItem = { id, ...opts }
     setToasts((prev) => [...prev, toastItem])
-    // remove after 3s
+    // remove after 3s for default, 5s for success messages
+    const duration = opts.title?.startsWith('✓') ? 5000 : 3000
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 3000)
+    }, duration)
   }, [])
 
   return (

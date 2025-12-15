@@ -107,6 +107,7 @@ export default function ExportPage() {
   const { toast } = useToast()
   const [isRetrying, setIsRetrying] = useState(false)
   const [exportStatus, setExportStatus] = useState<null | any>(null)
+  const [lastSendResult, setLastSendResult] = useState<{ success: boolean; message: string } | null>(null)
 
   const handleRetrySend = async () => {
     if (!user) return
@@ -133,25 +134,54 @@ export default function ExportPage() {
 
       if (res.status === 204) {
         toast({ title: "No data", description: "No blocks for that date" })
-      } else {
-        const j = await res.json().catch(() => ({ success: false, message: res.statusText }))
-        if (j.success) {
-          // Success case (can be 200 or other status codes)
-          const msg = j?.messageId 
-            ? `PDF sent to Telegram (message ${j.messageId})`
-            : "PDF sent to Telegram successfully"
-          toast({ title: "✓ Sent", description: msg })
-          // Refresh status and update display
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          const s = await fetch(`/api/export/status?date=${selectedDate}`).then((r) => r.json()).catch(() => null)
-          setExportStatus(s?.record ?? null)
-        } else {
-          // Failure case (show detailed error message)
-          const errorMsg = j?.message || "Failed to send PDF"
-          toast({ title: "✗ Send failed", description: errorMsg, variant: "destructive" })
+        setIsRetrying(false)
+        return
+      }
+
+      let responseData
+      try {
+        responseData = await res.json()
+      } catch (parseError) {
+        console.error("Failed to parse response:", parseError, "status:", res.status)
+        toast({ title: "✗ Send failed", description: `Server error: ${res.statusText}`, variant: "destructive" })
+        setIsRetrying(false)
+        return
+      }
+
+      if (responseData?.success) {
+        // Success case
+        const msg = responseData?.messageId 
+          ? `PDF sent to Telegram (message ${responseData.messageId})`
+          : "PDF sent to Telegram successfully"
+        toast({ title: "✓ Sent", description: msg })
+        console.log("Send successful, response:", responseData)
+        
+        // Show success feedback immediately
+        setLastSendResult({ success: true, message: msg })
+        
+        // Wait for DB propagation and refresh status
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        try {
+          const statusRes = await fetch(`/api/export/status?date=${selectedDate}`)
+          if (statusRes.ok) {
+            const statusData = await statusRes.json()
+            console.log("Fetched export status:", statusData)
+            setExportStatus(statusData?.record ?? null)
+          } else {
+            console.error("Status fetch failed:", statusRes.status)
+          }
+        } catch (e) {
+          console.error("Failed to refresh export status:", e)
         }
+      } else {
+        // Failure case
+        const errorMsg = responseData?.message || "Failed to send PDF"
+        console.error("Send failed:", responseData)
+        toast({ title: "✗ Send failed", description: errorMsg, variant: "destructive" })
+        setLastSendResult({ success: false, message: errorMsg })
       }
     } catch (e) {
+      console.error("Retry send error:", e)
       toast({ title: "Send failed", description: String(e), variant: "destructive" })
     } finally {
       setIsRetrying(false)
@@ -182,8 +212,21 @@ export default function ExportPage() {
         setExportStatus(null)
       }
     })()
+    
+    // Clear last send result when date changes
+    setLastSendResult(null)
+    
     return () => { mounted = false }
   }, [selectedDate, user])
+
+  // Auto-clear last send result after 8 seconds
+  useEffect(() => {
+    if (!lastSendResult) return
+    const timer = setTimeout(() => {
+      setLastSendResult(null)
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [lastSendResult])
 
   // --- Render ---
 
@@ -302,6 +345,20 @@ export default function ExportPage() {
                    </div>
                 </div>
               </div>
+                {lastSendResult && (
+                  <div className={cn(
+                    "pt-2 px-2 py-2 rounded border animate-pulse",
+                    lastSendResult.success
+                      ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-200"
+                      : "bg-red-50 border-red-200 text-red-700 dark:bg-red-950 dark:border-red-800 dark:text-red-200"
+                  )}>
+                    <div className="text-xs font-medium">
+                      {lastSendResult.success ? "✓ Sent Successfully" : "✗ Send Failed"}
+                    </div>
+                    <div className="text-xs mt-1">{lastSendResult.message}</div>
+                  </div>
+                )}
+
                 {exportStatus && (
                   <div className="pt-2">
                     <div className="flex items-center gap-2 text-sm">
