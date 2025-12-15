@@ -5,6 +5,7 @@ import { sendPdf } from "@/lib/telegram/sender"
 import { getTelegramConfig } from "@/lib/telegram/config"
 import { upsertExportRecord, incrementAttempt } from "@/lib/exports"
 import { getReportDateUTCPlus7 } from "@/lib/telegram/utils"
+import { getTimeBlocksForDateFromAdmin } from "@/lib/storage"
 
 // Debug-only route to send an export as a specific user (useful for local testing).
 // Protected by CRON_SECRET header or only enabled in non-production environments.
@@ -24,22 +25,7 @@ export async function POST(req: Request) {
     const sendDate = date || getReportDateUTCPlus7()
 
     const admin = createAdminClient()
-    const { data: rows, error } = await admin.from('time_blocks').select('*').eq('user_id', userId).eq('date', sendDate)
-    if (error) return NextResponse.json({ success: false, message: 'DB error fetching blocks', error }, { status: 500 })
-    const blocks = (rows || []).map((d: any) => ({
-      id: d.id,
-      userId: d.user_id,
-      title: d.title,
-      description: d.description || undefined,
-      date: d.date,
-      startTime: d.start_time,
-      endTime: d.end_time,
-      category: d.category,
-      color: d.color,
-      completed: !!d.completed,
-      repeatDaily: !!d.repeat_daily,
-      createdAt: d.created_at,
-    }))
+    const blocks = await getTimeBlocksForDateFromAdmin(admin, userId, sendDate)
 
     if (blocks.length === 0) return NextResponse.json({ success: false, message: 'No blocks for date' }, { status: 204 })
 

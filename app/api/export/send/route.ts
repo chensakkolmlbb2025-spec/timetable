@@ -5,6 +5,7 @@ import { generatePDF } from "@/lib/pdf-export"
 import { sendPdf } from "@/lib/telegram/sender"
 import { getTelegramConfig } from "@/lib/telegram/config"
 import { getExportRecord, upsertExportRecord, incrementAttempt } from "@/lib/exports"
+import { getTimeBlocksForDateFromAdmin } from "@/lib/storage"
 
 export async function POST(req: Request) {
   try {
@@ -33,26 +34,7 @@ export async function POST(req: Request) {
 
   // Fetch blocks using admin client to avoid RLS surprises but scoped to this user
     const admin = createAdminClient()
-    const { data: rows, error } = await admin.from("time_blocks").select("*").eq("user_id", userId).eq("date", date)
-    if (error) {
-      console.error("DB error fetching blocks:", error)
-      return NextResponse.json({ success: false, message: "DB error" }, { status: 500 })
-    }
-
-    const blocks = (rows || []).map((d: any) => ({
-      id: d.id,
-      userId: d.user_id,
-      title: d.title,
-      description: d.description || undefined,
-      date: d.date,
-      startTime: d.start_time,
-      endTime: d.end_time,
-      category: d.category,
-      color: d.color,
-      completed: !!d.completed,
-      repeatDaily: !!d.repeat_daily,
-      createdAt: d.created_at,
-    }))
+    const blocks = await getTimeBlocksForDateFromAdmin(admin, userId, date)
 
     if (blocks.length === 0) {
       return NextResponse.json({ success: false, message: "No data for that date" }, { status: 204 })

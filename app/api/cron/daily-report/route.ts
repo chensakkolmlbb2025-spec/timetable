@@ -4,6 +4,7 @@ import { generatePDF } from "@/lib/pdf-export"
 import { sendPdf, sendFailureAlert } from "@/lib/telegram/sender"
 import { getReportDateUTCPlus7 } from "@/lib/telegram/utils"
 import { getExportRecord, upsertExportRecord, incrementAttempt } from "@/lib/exports"
+import { getTimeBlocksForDateFromAdmin } from "@/lib/storage"
 
 export async function POST(req: Request) {
   try {
@@ -24,27 +25,8 @@ export async function POST(req: Request) {
 
     const admin = createAdminClient()
 
-    // Fetch blocks for the date
-    const { data: rows, error } = await admin.from("time_blocks").select("*").eq("user_id", userId).eq("date", date)
-    if (error) {
-      console.error("Failed to fetch time_blocks:", error)
-      return NextResponse.json({ success: false, message: "DB error" }, { status: 500 })
-    }
-
-    const blocks = (rows || []).map((d: any) => ({
-      id: d.id,
-      userId: d.user_id,
-      title: d.title,
-      description: d.description || undefined,
-      date: d.date,
-      startTime: d.start_time,
-      endTime: d.end_time,
-      category: d.category,
-      color: d.color,
-      completed: !!d.completed,
-      repeatDaily: !!d.repeat_daily,
-      createdAt: d.created_at,
-    }))
+    // Fetch blocks for the date (includes repeat_daily blocks)
+    const blocks = await getTimeBlocksForDateFromAdmin(admin, userId, date)
 
     if (blocks.length === 0) {
       return NextResponse.json({ success: true, message: "No data for date" })

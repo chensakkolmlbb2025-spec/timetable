@@ -137,6 +137,58 @@ export async function getTimeBlocksForDate(userId: string, dateStr: string): Pro
   }
 }
 
+/**
+ * Server-side helper to fetch blocks for a specific date, including repeat_daily instances.
+ * Used by cron and API endpoints. Requires passing a Supabase admin client.
+ */
+export async function getTimeBlocksForDateFromAdmin(
+  adminClient: any,
+  userId: string,
+  dateStr: string
+): Promise<TimeBlock[]> {
+  // Get all blocks for the user
+  const { data, error } = await adminClient.from("time_blocks").select("*").eq("user_id", userId)
+  if (error || !data) return []
+
+  const allBlocks = (data as any[]).map((d: any) => ({
+    id: d.id,
+    userId: d.user_id,
+    title: d.title,
+    description: d.description || undefined,
+    date: d.date,
+    startTime: d.start_time,
+    endTime: d.end_time,
+    category: d.category,
+    color: d.color,
+    completed: !!d.completed,
+    repeatDaily: !!d.repeat_daily,
+    createdAt: d.created_at,
+  }))
+
+  // Filter: blocks with exact date match OR repeat_daily blocks
+  const result: TimeBlock[] = []
+
+  // Add all blocks with exact date match
+  result.push(...allBlocks.filter((b: TimeBlock) => b.date === dateStr))
+
+  // For repeat_daily blocks, create instances for this date if they don't already exist
+  const repeatBlocks = allBlocks.filter((b: TimeBlock) => b.repeatDaily)
+  for (const repeatBlock of repeatBlocks) {
+    const existsOnDate = result.some((b) => b.id === repeatBlock.id && b.date === dateStr)
+    if (!existsOnDate) {
+      // Create an instance of the repeat block for this date
+      result.push({
+        ...repeatBlock,
+        date: dateStr,
+        completed: false, // reset completed status for new day
+        id: `${repeatBlock.id}-${dateStr}`, // unique id per date to avoid conflicts
+      })
+    }
+  }
+
+  return result
+}
+
 export async function saveTimeBlock(block: TimeBlock): Promise<void> {
   if (typeof window !== "undefined") {
     const supabase = createBrowserClient()

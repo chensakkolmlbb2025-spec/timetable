@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import useToast from "@/hooks/use-toast"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { useAuth } from "@/components/auth-provider"
-import { getTimeBlocks } from "@/lib/storage"
+import { getTimeBlocksForDate } from "@/lib/storage"
 import { formatDate, formatDisplayDate } from "@/lib/date-utils"
 import { generatePDF } from "@/lib/pdf-export"
 import type { TimeBlock } from "@/lib/types"
@@ -57,9 +57,8 @@ export default function ExportPage() {
     setIsGenerating(true)
     
     try {
-      // Fetch Data
-      const allBlocks = await getTimeBlocks(user.id)
-      const dayBlocks = allBlocks.filter((b) => b.date === selectedDate)
+      // Fetch Data (includes repeat_daily blocks for the selected date)
+      const dayBlocks = await getTimeBlocksForDate(user.id, selectedDate)
       setBlocks(dayBlocks)
 
       // Clear previous URL to free memory
