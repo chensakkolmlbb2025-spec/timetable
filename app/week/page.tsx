@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { Card } from "@/components/ui"
 import { useAuth } from "@/components/auth-provider"
-import { getTimeBlocks } from "@/lib/storage"
+import { getTimeBlocksForDate } from "@/lib/storage"
 import { formatDate, formatDisplayDate, addDays } from "@/lib/date-utils"
 import type { TimeBlock } from "@/lib/types"
 import { downloadPDF } from "@/lib/pdf-export"
@@ -49,14 +49,14 @@ export default function WeekViewPage() {
 
   const loadBlocks = async () => {
     if (!user) return
-    const allBlocks = await getTimeBlocks(user.id)
-
-    // Filter blocks for the current week
+    
+    // Load blocks for each day of the week using getTimeBlocksForDate
+    // This will automatically include repeat_daily tasks for each day
     const weekBlocks: TimeBlock[] = []
     for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i)
       const dateStr = formatDate(date)
-      const dayBlocks = allBlocks.filter((b) => b.date === dateStr)
+      const dayBlocks = await getTimeBlocksForDate(user.id, dateStr)
       weekBlocks.push(...dayBlocks)
     }
 
