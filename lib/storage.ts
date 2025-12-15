@@ -55,6 +55,88 @@ export async function getTimeBlocks(userId: string): Promise<TimeBlock[]> {
   }
 }
 
+/**
+ * Get all time blocks for a specific date, auto-creating instances of repeat_daily blocks if needed.
+ * This ensures that repeat_daily blocks appear on every day without manual duplication.
+ */
+export async function getTimeBlocksForDate(userId: string, dateStr: string): Promise<TimeBlock[]> {
+  if (typeof window !== "undefined") {
+    const supabase = createBrowserClient()
+    
+    // Get all blocks for the user (both repeat_daily and regular blocks)
+    const { data, error } = await supabase.from("time_blocks").select("*").eq("user_id", userId)
+    if (error || !data) return []
+    
+    const allBlocks = data.map((d: any) => ({
+      id: d.id,
+      userId: d.user_id,
+      title: d.title,
+      description: d.description || undefined,
+      date: d.date,
+      startTime: d.start_time,
+      endTime: d.end_time,
+      category: d.category,
+      color: d.color,
+      completed: !!d.completed,
+      repeatDaily: !!d.repeat_daily,
+      createdAt: d.created_at,
+    }))
+    
+    // Filter: blocks with exact date match OR repeat_daily blocks
+    const result: TimeBlock[] = []
+    
+    // Add all blocks with exact date match
+    result.push(...allBlocks.filter((b: any) => b.date === dateStr))
+    
+    // For repeat_daily blocks, create instances for this date if they don't already exist
+    const repeatBlocks = allBlocks.filter((b: any) => b.repeatDaily)
+    for (const repeatBlock of repeatBlocks) {
+      const existsOnDate = result.some((b) => b.id === repeatBlock.id && b.date === dateStr)
+      if (!existsOnDate) {
+        // Create an instance of the repeat block for this date
+        result.push({
+          ...repeatBlock,
+          date: dateStr,
+          completed: false, // reset completed status for new day
+          id: `${repeatBlock.id}-${dateStr}`, // unique id per date to avoid conflicts
+        })
+      }
+    }
+    
+    return result
+  }
+
+  // Fallback for server-side or when Supabase is not available
+  const data = localStorage.getItem(BLOCKS_KEY)
+  if (!data) return []
+
+  try {
+    const allBlocks: TimeBlock[] = JSON.parse(data)
+    const userBlocks = allBlocks.filter((block) => block.userId === userId)
+    
+    // Add blocks with exact date match
+    const result: TimeBlock[] = [...userBlocks.filter((b) => b.date === dateStr)]
+    
+    // Add instances of repeat_daily blocks
+    const repeatBlocks = userBlocks.filter((b) => b.repeatDaily)
+    for (const repeatBlock of repeatBlocks) {
+      const existsOnDate = result.some((b) => b.id === repeatBlock.id && b.date === dateStr)
+      if (!existsOnDate) {
+        result.push({
+          ...repeatBlock,
+          date: dateStr,
+          completed: false,
+          id: `${repeatBlock.id}-${dateStr}`,
+        })
+      }
+    }
+    
+    return result
+  } catch {
+    return []
+  }
+}
+
 export async function saveTimeBlock(block: TimeBlock): Promise<void> {
   if (typeof window !== "undefined") {
     const supabase = createBrowserClient()

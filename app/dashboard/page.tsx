@@ -14,7 +14,7 @@ import { TimeGrid } from "@/components/time-grid"
 import { TimeBlockModal } from "@/components/time-block-modal"
 import { useAuth } from "@/components/auth-provider"
 import {
-  getTimeBlocks,
+  getTimeBlocksForDate,
   getUserPreferences,
   saveDefaultTemplate,
   getDefaultTemplates,
@@ -69,9 +69,8 @@ export default function DashboardPage() {
 
   const loadBlocks = async () => {
     if (!user) return
-    const allBlocks = await getTimeBlocks(user.id)
     const dateStr = formatDate(currentDate)
-    const dayBlocks = allBlocks.filter((b) => b.date === dateStr)
+    const dayBlocks = await getTimeBlocksForDate(user.id, dateStr)
     setBlocks(dayBlocks)
   }
 
