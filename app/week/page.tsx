@@ -10,7 +10,7 @@ import { useAuth } from "@/components/auth-provider"
 import { getTimeBlocksForDate } from "@/lib/storage"
 import { formatDate, formatDisplayDate, addDays } from "@/lib/date-utils"
 import type { TimeBlock } from "@/lib/types"
-import { downloadPDF } from "@/lib/pdf-export"
+import { downloadPDF, downloadWeeklyPDF } from "@/lib/pdf-export"
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
@@ -87,15 +87,11 @@ export default function WeekViewPage() {
   const handleDownloadWeek = () => {
     if (!user) return
 
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(weekStart, i)
-      const dateStr = formatDate(date)
-      const dayBlocks = getBlocksForDay(i)
-
-      if (dayBlocks.length > 0) {
-        downloadPDF(dayBlocks, dateStr, user.name, `timetable-${dateStr}.pdf`)
-      }
-    }
+    // Generate single landscape A4 PDF with all 7 days
+    const weekEndDate = addDays(weekStart, 6)
+    const startStr = formatDate(weekStart)
+    const endStr = formatDate(weekEndDate)
+    downloadWeeklyPDF(weekStart, blocks, user.name, `timetable-week-${startStr}-to-${endStr}.pdf`)
   }
 
   if (loading || !user) {
