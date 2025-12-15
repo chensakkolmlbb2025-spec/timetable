@@ -191,78 +191,108 @@ export default function DashboardPage() {
 
       <DashboardNav />
 
-  <main className="container mx-auto px-4 pt-24 pb-12 md:pl-72">
+  <main className="container mx-auto px-3 sm:px-4 pt-16 sm:pt-20 md:pt-24 pb-12 md:pl-72">
         {/* Date navigation */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
                   {formatDisplayDate(formatDate(currentDate))}
                 </h1>
                 {isToday && <p className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">Today</p>}
               </div>
 
               <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handlePreviousDay} className="gap-2 bg-transparent">
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </Button>
-              {!isToday && (
-                <Button variant="outline" size="sm" onClick={handleToday}>
-                  Today
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handlePreviousDay} 
+                  className="flex-1 sm:flex-none gap-1 sm:gap-2 bg-transparent h-9 sm:h-10"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">Prev</span>
                 </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={handleNextDay} className="gap-2 bg-transparent">
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+                {!isToday && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleToday}
+                    className="flex-1 sm:flex-none h-9 sm:h-10"
+                  >
+                    Today
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleNextDay} 
+                  className="flex-1 sm:flex-none gap-1 sm:gap-2 bg-transparent h-9 sm:h-10"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
         </Card>
 
   {/* Timetable grid */}
   <Card className="mb-0 mt-4">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Schedule</h2>
-            <div className="flex items-center gap-3">
+            
+            {/* Quick add controls - Stack on mobile */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {blocks.length > 0 && (
-                <Button onClick={handleSetAsDefault} variant="outline" className="gap-2 bg-transparent">
+                <Button 
+                  onClick={handleSetAsDefault} 
+                  variant="outline" 
+                  className="gap-2 bg-transparent h-10 sm:h-auto order-last sm:order-first"
+                >
                   <Save className="w-4 h-4" />
-                  Set as Default
+                  <span className="hidden sm:inline">Set as Default</span>
+                  <span className="sm:hidden">Save Template</span>
                 </Button>
               )}
 
-              {/* Quick set time controls (visible on mobile and up) */}
-              <div className="flex items-center gap-2">
+              {/* Time and duration controls */}
+              <div className="flex items-center gap-2 flex-1 sm:flex-initial">
                 <Input
                   type="time"
                   value={quickTime}
                   onChange={(e) => setQuickTime(e.target.value)}
-                  className="h-10 w-28 bg-white/60 dark:bg-gray-800/60"
+                  className="h-10 flex-1 sm:w-28 bg-white/60 dark:bg-gray-800/60 text-base"
+                  aria-label="Start time"
                 />
 
                 <select
                   value={String(quickDuration)}
                   onChange={(e) => setQuickDuration(Number(e.target.value))}
-                  className="h-10 bg-white/60 dark:bg-gray-800/60 rounded-md border border-gray-200 dark:border-gray-800 px-2 text-sm"
+                  className="h-10 flex-1 sm:flex-initial bg-white/60 dark:bg-gray-800/60 rounded-md border border-gray-200 dark:border-gray-800 px-2 sm:px-3 text-sm"
+                  aria-label="Duration"
                 >
+                  <option value={15}>15m</option>
                   <option value={30}>30m</option>
                   <option value={45}>45m</option>
                   <option value={60}>1h</option>
                   <option value={90}>1h 30m</option>
                   <option value={120}>2h</option>
                 </select>
-                <div className="text-xs text-gray-500 hidden md:block">Ends: {calculateQuickEnd(quickTime, quickDuration)}</div>
+                <div className="text-xs text-gray-500 hidden lg:block whitespace-nowrap">
+                  Ends: {calculateQuickEnd(quickTime, quickDuration)}
+                </div>
               </div>
 
               <Button
                 onClick={() => router.push(`/dashboard/new?date=${formatDate(currentDate)}&time=${quickTime}&duration=${quickDuration}`)}
-                className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-10 sm:h-auto active:scale-95 transition-transform"
               >
                 <Plus className="w-4 h-4" />
-                Add Time Block
+                <span className="hidden sm:inline">Add Time Block</span>
+                <span className="sm:hidden">Add Block</span>
               </Button>
             </div>
           </div>
@@ -287,20 +317,20 @@ export default function DashboardPage() {
 
         {/* Daily stats */}
         {blocks.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Blocks</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{blocks.length}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-6">
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4 sm:p-5">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Blocks</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{blocks.length}</p>
             </div>
-            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</p>
-              <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4 sm:p-5">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
                 {blocks.filter((b) => b.completed).length}
               </p>
             </div>
-            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completion Rate</p>
-              <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+            <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg border border-white/20 p-4 sm:p-5 sm:col-span-2 md:col-span-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Completion Rate</p>
+              <p className="text-2xl sm:text-3xl font-bold text-indigo-600 dark:text-indigo-400">
                 {blocks.length > 0 ? Math.round((blocks.filter((b) => b.completed).length / blocks.length) * 100) : 0}%
               </p>
             </div>
