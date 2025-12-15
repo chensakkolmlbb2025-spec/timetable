@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  MoreVertical
+  MoreVertical,
+  Rocket
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Logo from "@/components/ui/logo"
@@ -33,6 +34,7 @@ function cn(...inputs: ClassValue[]) {
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Timetable", icon: Calendar },
   { href: "/week", label: "Week View", icon: CalendarDays },
+  { href: "/missions", label: "Missions", icon: Rocket },
   { href: "/templates", label: "Templates", icon: LayoutGrid },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/export", label: "Export", icon: FileText },
