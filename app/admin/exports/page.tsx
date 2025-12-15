@@ -2,6 +2,8 @@ import React from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getTelegramConfig } from '@/lib/telegram/config'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminExportsPage({ searchParams }: { searchParams?: { secret?: string } }) {
   const secret = searchParams?.secret
   const adminSecret = process.env.ADMIN_UI_SECRET
