@@ -247,15 +247,21 @@ export default function ExportPage() {
 
       <main className="flex-1 flex flex-col md:pl-[72px] lg:pl-[280px] transition-[padding] duration-300">
         
-        {/* Header Section */}
-          <header className="h-16 border-b border-white/20 flex items-center justify-between px-6 bg-white/70 dark:bg-gray-900/70 backdrop-blur-md sticky top-0 z-30">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <span>Workspace</span>
-            <ChevronRight className="w-4 h-4" />
+        {/* Header Section - Mobile Optimized */}
+        <header className="h-auto sm:h-16 border-b border-white/20 flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-0 gap-3 sm:gap-0 bg-white/70 dark:bg-gray-900/70 backdrop-blur-md sticky top-0 sm:top-0 md:top-0 z-30">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+            <span className="hidden sm:inline">Workspace</span>
+            <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 hidden sm:inline" />
             <span className="font-medium text-gray-900 dark:text-white">Export</span>
+            <span className="text-xs text-gray-400 ml-auto sm:hidden">
+              {blocks.length > 0 ? `${blocks.length} blocks` : 'No data'}
+            </span>
           </div>
-          <div className="flex items-center gap-3">
-             <span className="text-xs text-gray-400 hidden sm:inline-block">
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+             <span className="text-xs text-gray-400 hidden sm:inline-block flex-1">
                {blocks.length > 0 ? 'Ready to export' : 'No data available'}
              </span>
              <Button
@@ -264,25 +270,41 @@ export default function ExportPage() {
                size="sm"
                className={cn(
                  "bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-all",
-                 "shadow-sm border border-transparent"
+                 "shadow-sm border border-transparent flex-1 sm:flex-none h-9 sm:h-8 active:scale-95"
                )}
              >
                {isGenerating ? (
-                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                 <>
+                   <Loader2 className="w-4 h-4 mr-1.5 sm:mr-2 animate-spin" />
+                   <span className="hidden xs:inline">Generating...</span>
+                 </>
                ) : (
-                 <Download className="w-4 h-4 mr-2" />
+                 <>
+                   <Download className="w-4 h-4 mr-1.5 sm:mr-2" />
+                   <span className="hidden xs:inline">Export PDF</span>
+                   <span className="xs:hidden">Export</span>
+                 </>
                )}
-               Export PDF
              </Button>
              <Button
                onClick={handleRetrySend}
                disabled={blocks.length === 0 || isRetrying}
                size="sm"
                variant="ghost"
-               className="ml-2"
+               className="flex-1 sm:flex-none h-9 sm:h-8 active:scale-95"
              >
-               {isRetrying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
-               Retry Send
+               {isRetrying ? (
+                 <>
+                   <Loader2 className="w-4 h-4 mr-1.5 sm:mr-2 animate-spin" />
+                   <span className="hidden xs:inline">Sending...</span>
+                 </>
+               ) : (
+                 <>
+                   <FileText className="w-4 h-4 mr-1.5 sm:mr-2" />
+                   <span className="hidden xs:inline">Retry Send</span>
+                   <span className="xs:hidden">Send</span>
+                 </>
+               )}
              </Button>
           </div>
         </header>
@@ -290,12 +312,12 @@ export default function ExportPage() {
         <div className="flex-1 overflow-hidden">
           <div className="h-full flex flex-col lg:flex-row">
             
-            {/* Left Rail: Controls */}
-            <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 p-6 flex flex-col gap-8 overflow-y-auto backdrop-blur-sm">
+            {/* Left Rail: Controls - Stack on mobile */}
+            <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-white/20 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 p-4 sm:p-6 flex flex-col gap-6 sm:gap-8 overflow-y-auto backdrop-blur-sm max-h-[40vh] lg:max-h-none">
               
               <div>
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight mb-1">Export Settings</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Configure your daily snapshot.</p>
+                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white tracking-tight mb-1">Export Settings</h1>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Configure your daily snapshot.</p>
               </div>
 
               {/* Date Picker Control */}
@@ -387,23 +409,23 @@ export default function ExportPage() {
               </div>
             </aside>
 
-            {/* Right Area: The "Desk" (Preview) */}
-            <div className="flex-1 bg-gray-50 dark:bg-gray-900/80 relative overflow-auto flex items-start justify-center p-8 lg:p-12">
+            {/* Right Area: The "Desk" (Preview) - Better mobile layout */}
+            <div className="flex-1 bg-gray-50 dark:bg-gray-900/80 relative overflow-auto flex items-start justify-center p-4 sm:p-8 lg:p-12 min-h-[60vh] lg:min-h-0">
                {/* Pattern Background */}
                <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" 
                     style={{ backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
                </div>
 
-               {/* The A4 Paper Container */}
+               {/* The A4 Paper Container - Responsive sizing */}
                <div className={cn(
                  "relative z-10 w-full max-w-[500px] transition-all duration-500",
                  // Enforce A4 Aspect Ratio (210mm / 297mm = ~0.707)
-                 "aspect-[210/297] bg-white shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10"
+                 "aspect-[210/297] bg-white shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10 rounded-sm sm:rounded-none"
                )}>
                  {isGenerating ? (
                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-20">
-                     <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
-                     <p className="text-sm text-gray-400 font-medium animate-pulse">Rendering Document...</p>
+                     <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 animate-spin mb-3 sm:mb-4" />
+                     <p className="text-xs sm:text-sm text-gray-400 font-medium animate-pulse">Rendering Document...</p>
                    </div>
                  ) : previewUrl ? (
                    <iframe 
