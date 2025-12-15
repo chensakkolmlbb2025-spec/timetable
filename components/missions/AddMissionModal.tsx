@@ -14,17 +14,17 @@ interface AddMissionModalProps {
 }
 
 const priorityOptions: Array<{ value: MissionPriority; label: string; icon: typeof Zap; color: string }> = [
-  { value: 'critical', label: 'Critical', icon: Zap, color: 'text-red-400 bg-red-500/20 border-red-400/30' },
-  { value: 'high', label: 'High', icon: Star, color: 'text-amber-400 bg-amber-500/20 border-amber-400/30' },
-  { value: 'medium', label: 'Medium', icon: Target, color: 'text-blue-400 bg-blue-500/20 border-blue-400/30' },
-  { value: 'low', label: 'Low', icon: Clock, color: 'text-slate-400 bg-slate-500/20 border-slate-400/30' },
+  { value: 'critical', label: 'Critical', icon: Zap, color: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/20 border-red-300 dark:border-red-400/30' },
+  { value: 'high', label: 'High', icon: Star, color: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-400/30' },
+  { value: 'medium', label: 'Medium', icon: Target, color: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20 border-blue-300 dark:border-blue-400/30' },
+  { value: 'low', label: 'Low', icon: Clock, color: 'text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-500/20 border-gray-300 dark:border-slate-400/30' },
 ]
 
 const difficultyOptions: Array<{ value: MissionDifficulty; label: string; color: string }> = [
-  { value: 'easy', label: 'Easy', color: 'bg-green-500/20 text-green-300 border-green-400/30' },
-  { value: 'medium', label: 'Medium', color: 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30' },
-  { value: 'hard', label: 'Hard', color: 'bg-orange-500/20 text-orange-300 border-orange-400/30' },
-  { value: 'extreme', label: 'Extreme', color: 'bg-red-500/20 text-red-300 border-red-400/30' },
+  { value: 'easy', label: 'Easy', color: 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 border-green-300 dark:border-green-400/30' },
+  { value: 'medium', label: 'Medium', color: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-400/30' },
+  { value: 'hard', label: 'Hard', color: 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-400/30' },
+  { value: 'extreme', label: 'Extreme', color: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-300 dark:border-red-400/30' },
 ]
 
 export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: AddMissionModalProps) {
@@ -104,22 +104,22 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
             className="fixed inset-x-4 top-[5%] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 sm:w-full sm:max-w-lg"
           >
             <div className={cn(
-              'relative overflow-hidden rounded-3xl',
-              'bg-slate-900/90 backdrop-blur-2xl',
-              'border border-white/10',
-              'shadow-2xl shadow-black/40'
+              'relative overflow-hidden rounded-2xl',
+              'bg-white dark:bg-slate-900/90 backdrop-blur-2xl',
+              'border border-gray-200 dark:border-white/10',
+              'shadow-2xl'
             )}>
               {/* Gradient decoration */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500" />
 
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-white/10">
-                <h2 className="text-xl font-semibold text-white">New Mission</h2>
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-white/10">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">New Mission</h2>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={onClose}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </motion.button>
@@ -132,7 +132,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-3 rounded-xl bg-red-500/20 border border-red-400/30 text-red-300 text-sm"
+                    className="p-3 rounded-xl bg-red-100 dark:bg-red-500/20 border border-red-200 dark:border-red-400/30 text-red-700 dark:text-red-300 text-sm"
                   >
                     {error}
                   </motion.div>
@@ -140,7 +140,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
 
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
                     Mission Title *
                   </label>
                   <input
@@ -150,9 +150,9 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                     placeholder="What needs to be done?"
                     className={cn(
                       'w-full px-4 py-3 rounded-xl',
-                      'bg-white/5 border border-white/10',
-                      'text-white placeholder-white/30',
-                      'focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20',
+                      'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                      'text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30',
+                      'focus:outline-none focus:border-indigo-400 dark:focus:border-blue-400/50 focus:ring-2 focus:ring-indigo-400/20 dark:focus:ring-blue-400/20',
                       'transition-all duration-200'
                     )}
                   />
@@ -160,7 +160,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
                     Description
                   </label>
                   <textarea
@@ -170,9 +170,9 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                     rows={3}
                     className={cn(
                       'w-full px-4 py-3 rounded-xl resize-none',
-                      'bg-white/5 border border-white/10',
-                      'text-white placeholder-white/30',
-                      'focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20',
+                      'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                      'text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30',
+                      'focus:outline-none focus:border-indigo-400 dark:focus:border-blue-400/50 focus:ring-2 focus:ring-indigo-400/20 dark:focus:ring-blue-400/20',
                       'transition-all duration-200'
                     )}
                   />
@@ -180,7 +180,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
 
                 {/* Deadline */}
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       <span>Deadline *</span>
@@ -193,9 +193,9 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                     min={getTodayDate()}
                     className={cn(
                       'w-full px-4 py-3 rounded-xl',
-                      'bg-white/5 border border-white/10',
-                      'text-white [color-scheme:dark]',
-                      'focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20',
+                      'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                      'text-gray-900 dark:text-white dark:[color-scheme:dark]',
+                      'focus:outline-none focus:border-indigo-400 dark:focus:border-blue-400/50 focus:ring-2 focus:ring-indigo-400/20 dark:focus:ring-blue-400/20',
                       'transition-all duration-200'
                     )}
                   />
@@ -203,7 +203,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
 
                 {/* Priority */}
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
                     Priority
                   </label>
                   <div className="grid grid-cols-4 gap-2">
@@ -221,7 +221,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                             'flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all',
                             isSelected 
                               ? opt.color
-                              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                              : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/10'
                           )}
                         >
                           <Icon className="w-5 h-5" />
@@ -234,7 +234,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
 
                 {/* Difficulty */}
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
                     Difficulty
                   </label>
                   <div className="grid grid-cols-4 gap-2">
@@ -251,7 +251,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                             'px-3 py-2.5 rounded-xl border text-sm font-medium transition-all',
                             isSelected 
                               ? opt.color
-                              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                              : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-white/10'
                           )}
                         >
                           {opt.label}
@@ -264,7 +264,7 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                 {/* Link to Timeblock */}
                 {timeblocks.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-2">
                       <div className="flex items-center gap-2">
                         <Link2 className="w-4 h-4" />
                         <span>Link to Timeblock</span>
@@ -275,15 +275,15 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                       onChange={(e) => setTimeblockId(e.target.value || null)}
                       className={cn(
                         'w-full px-4 py-3 rounded-xl',
-                        'bg-white/5 border border-white/10',
-                        'text-white',
-                        'focus:outline-none focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400/20',
+                        'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10',
+                        'text-gray-900 dark:text-white',
+                        'focus:outline-none focus:border-purple-400 dark:focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400/20',
                         'transition-all duration-200'
                       )}
                     >
-                      <option value="" className="bg-slate-900">No link</option>
+                      <option value="" className="bg-white dark:bg-slate-900">No link</option>
                       {timeblocks.map((tb) => (
-                        <option key={tb.id} value={tb.id} className="bg-slate-900">
+                        <option key={tb.id} value={tb.id} className="bg-white dark:bg-slate-900">
                           {tb.title} ({tb.start_time})
                         </option>
                       ))}
@@ -299,9 +299,9 @@ export function AddMissionModal({ isOpen, onClose, onSubmit, timeblocks = [] }: 
                   whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
                   className={cn(
                     'w-full py-3.5 rounded-xl font-semibold',
-                    'bg-gradient-to-r from-blue-500 to-cyan-500',
-                    'text-white shadow-lg shadow-blue-500/25',
-                    'hover:shadow-blue-500/40',
+                    'bg-gradient-to-r from-indigo-600 to-purple-600',
+                    'text-white shadow-lg shadow-indigo-500/25',
+                    'hover:shadow-indigo-500/40',
                     'disabled:opacity-50 disabled:cursor-not-allowed',
                     'transition-all duration-200'
                   )}

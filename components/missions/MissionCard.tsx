@@ -15,52 +15,48 @@ import {
 import { cn } from '@/lib/utils'
 import type { Mission, MissionPriority, MissionDifficulty } from '@/lib/missions/types'
 
-// iOS 26 Glassmorphism variants by level
+// Light/dark theme variants by level
 const levelStyles = {
-  // Level 1: Mission Pool - Blue glass
+  // Level 1: Mission Pool - Blue
   pool: {
-    container: 'bg-blue-500/10 backdrop-blur-xl border-blue-400/20 hover:border-blue-400/40',
-    gradient: 'from-blue-500/20 via-transparent to-cyan-500/10',
-    icon: 'text-blue-400',
-    badge: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
+    container: 'bg-white dark:bg-blue-500/10 border-blue-200 dark:border-blue-400/20 hover:border-blue-400 dark:hover:border-blue-400/40 shadow-sm hover:shadow-md',
+    gradient: 'from-blue-50 dark:from-blue-500/20 via-transparent to-cyan-50 dark:to-cyan-500/10',
+    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 border-blue-200 dark:border-blue-400/30',
   },
-  // Level 2: Today's Missions - Gold glass
+  // Level 2: Today's Missions - Gold
   today: {
-    container: 'bg-amber-500/10 backdrop-blur-xl border-amber-400/20 hover:border-amber-400/40',
-    gradient: 'from-amber-500/20 via-transparent to-orange-500/10',
-    icon: 'text-amber-400',
-    badge: 'bg-amber-500/20 text-amber-300 border-amber-400/30',
+    container: 'bg-white dark:bg-amber-500/10 border-amber-200 dark:border-amber-400/20 hover:border-amber-400 dark:hover:border-amber-400/40 shadow-sm hover:shadow-md',
+    gradient: 'from-amber-50 dark:from-amber-500/20 via-transparent to-orange-50 dark:to-orange-500/10',
+    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border-amber-200 dark:border-amber-400/30',
   },
-  // Level 3: Completed - Emerald glass
+  // Level 3: Completed - Emerald
   completed: {
-    container: 'bg-emerald-500/10 backdrop-blur-xl border-emerald-400/20 hover:border-emerald-400/40',
-    gradient: 'from-emerald-500/20 via-transparent to-green-500/10',
-    icon: 'text-emerald-400',
-    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
+    container: 'bg-white dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-400/20 hover:border-emerald-400 dark:hover:border-emerald-400/40 shadow-sm hover:shadow-md',
+    gradient: 'from-emerald-50 dark:from-emerald-500/20 via-transparent to-green-50 dark:to-green-500/10',
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-400/30',
   },
-  // Failed state - Red glass
+  // Failed state - Red
   failed: {
-    container: 'bg-red-500/10 backdrop-blur-xl border-red-400/20',
-    gradient: 'from-red-500/20 via-transparent to-rose-500/10',
-    icon: 'text-red-400',
-    badge: 'bg-red-500/20 text-red-300 border-red-400/30',
+    container: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-400/20',
+    gradient: 'from-red-50 dark:from-red-500/20 via-transparent to-rose-50 dark:to-rose-500/10',
+    badge: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 border-red-200 dark:border-red-400/30',
   },
 }
 
 // Priority icons and colors
 const priorityConfig: Record<MissionPriority, { icon: typeof Zap; color: string; label: string }> = {
-  critical: { icon: Zap, color: 'text-red-400', label: 'Critical' },
-  high: { icon: Star, color: 'text-amber-400', label: 'High' },
-  medium: { icon: Target, color: 'text-blue-400', label: 'Medium' },
-  low: { icon: Clock, color: 'text-slate-400', label: 'Low' },
+  critical: { icon: Zap, color: 'text-red-600 dark:text-red-400', label: 'Critical' },
+  high: { icon: Star, color: 'text-amber-600 dark:text-amber-400', label: 'High' },
+  medium: { icon: Target, color: 'text-blue-600 dark:text-blue-400', label: 'Medium' },
+  low: { icon: Clock, color: 'text-gray-500 dark:text-slate-400', label: 'Low' },
 }
 
 // Difficulty badges
 const difficultyConfig: Record<MissionDifficulty, { color: string; label: string }> = {
-  easy: { color: 'bg-green-500/20 text-green-300 border-green-400/30', label: 'Easy' },
-  medium: { color: 'bg-yellow-500/20 text-yellow-300 border-yellow-400/30', label: 'Medium' },
-  hard: { color: 'bg-orange-500/20 text-orange-300 border-orange-400/30', label: 'Hard' },
-  extreme: { color: 'bg-red-500/20 text-red-300 border-red-400/30', label: 'Extreme' },
+  easy: { color: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300 border-green-200 dark:border-green-400/30', label: 'Easy' },
+  medium: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300 border-yellow-200 dark:border-yellow-400/30', label: 'Medium' },
+  hard: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300 border-orange-200 dark:border-orange-400/30', label: 'Hard' },
+  extreme: { color: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 border-red-200 dark:border-red-400/30', label: 'Extreme' },
 }
 
 interface MissionCardProps {
@@ -122,9 +118,8 @@ export function MissionCard({
         layout: { duration: 0.3 }
       }}
       className={cn(
-        // Base glass card
-        'relative overflow-hidden rounded-2xl border p-4',
-        'shadow-lg shadow-black/5',
+        // Base card
+        'relative overflow-hidden rounded-xl border p-4',
         'transition-all duration-300 ease-out',
         // Level-specific styles
         styles.container,
@@ -151,13 +146,13 @@ export function MissionCard({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className={cn(
-              'font-semibold text-white/90 leading-tight',
+              'font-semibold text-gray-900 dark:text-white/90 leading-tight',
               mission.status === 'completed' && 'line-through opacity-60'
             )}>
               {mission.title}
             </h3>
             {mission.description && (
-              <p className="mt-1 text-sm text-white/60 line-clamp-2">
+              <p className="mt-1 text-sm text-gray-600 dark:text-white/60 line-clamp-2">
                 {mission.description}
               </p>
             )}
@@ -170,7 +165,7 @@ export function MissionCard({
           <div className={cn(
             'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border',
             styles.badge,
-            isOverdue() && 'bg-red-500/30 text-red-300 border-red-400/50'
+            isOverdue() && 'bg-red-100 dark:bg-red-500/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-400/50'
           )}>
             <Calendar className="w-3.5 h-3.5" />
             <span>{formatDeadline(mission.deadline)}</span>
@@ -178,7 +173,7 @@ export function MissionCard({
 
           {/* Difficulty badge */}
           <div className={cn(
-            'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium',
+            'inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border',
             difficulty.color
           )}>
             {difficulty.label}
@@ -186,7 +181,7 @@ export function MissionCard({
 
           {/* Timeblock link indicator */}
           {mission.timeblock_id && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-purple-500/20 text-purple-300">
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-200 dark:border-purple-400/30">
               <Clock className="w-3 h-3" />
               <span>Linked</span>
             </div>
@@ -203,9 +198,10 @@ export function MissionCard({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onComplete(mission.id)}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl',
-                  'bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30',
-                  'text-emerald-300 text-sm font-medium',
+                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg',
+                  'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30',
+                  'border border-emerald-200 dark:border-emerald-400/30',
+                  'text-emerald-700 dark:text-emerald-300 text-sm font-medium',
                   'transition-all duration-200'
                 )}
               >
@@ -221,9 +217,10 @@ export function MissionCard({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onFail(mission.id)}
                 className={cn(
-                  'px-3 py-2 rounded-xl',
-                  'bg-red-500/20 hover:bg-red-500/30 border border-red-400/30',
-                  'text-red-300',
+                  'px-3 py-2 rounded-lg',
+                  'bg-red-100 hover:bg-red-200 dark:bg-red-500/20 dark:hover:bg-red-500/30',
+                  'border border-red-200 dark:border-red-400/30',
+                  'text-red-700 dark:text-red-300',
                   'transition-all duration-200'
                 )}
               >
@@ -238,9 +235,10 @@ export function MissionCard({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onEdit(mission)}
                 className={cn(
-                  'px-3 py-2 rounded-xl',
-                  'bg-white/5 hover:bg-white/10 border border-white/10',
-                  'text-white/60 hover:text-white/80',
+                  'px-3 py-2 rounded-lg',
+                  'bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10',
+                  'border border-gray-200 dark:border-white/10',
+                  'text-gray-600 hover:text-gray-800 dark:text-white/60 dark:hover:text-white/80',
                   'transition-all duration-200'
                 )}
               >
@@ -255,9 +253,10 @@ export function MissionCard({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onDelete(mission.id)}
                 className={cn(
-                  'px-3 py-2 rounded-xl',
-                  'bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-400/30',
-                  'text-white/60 hover:text-red-300',
+                  'px-3 py-2 rounded-lg',
+                  'bg-gray-100 hover:bg-red-100 dark:bg-white/5 dark:hover:bg-red-500/20',
+                  'border border-gray-200 dark:border-white/10 hover:border-red-200 dark:hover:border-red-400/30',
+                  'text-gray-600 hover:text-red-600 dark:text-white/60 dark:hover:text-red-300',
                   'transition-all duration-200'
                 )}
               >
@@ -270,7 +269,7 @@ export function MissionCard({
         {/* Completed state actions */}
         {level === 'completed' && (
           <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 text-emerald-400/80 text-sm">
+            <div className="flex-1 flex items-center gap-2 text-emerald-600 dark:text-emerald-400/80 text-sm">
               <CheckCircle2 className="w-4 h-4" />
               <span>Completed {mission.completed_at && new Date(mission.completed_at).toLocaleDateString()}</span>
             </div>
@@ -279,7 +278,7 @@ export function MissionCard({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onDelete(mission.id)}
-                className="px-2 py-1 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-300 transition-all"
+                className="px-2 py-1 rounded-lg bg-gray-100 hover:bg-red-100 dark:bg-white/5 dark:hover:bg-red-500/20 text-gray-500 hover:text-red-600 dark:text-white/40 dark:hover:text-red-300 transition-all"
               >
                 <Trash2 className="w-4 h-4" />
               </motion.button>
