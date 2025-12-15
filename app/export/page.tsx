@@ -134,15 +134,21 @@ export default function ExportPage() {
       if (res.status === 204) {
         toast({ title: "No data", description: "No blocks for that date" })
       } else {
-        const j = await res.json().catch(() => ({ success: false }))
-        if (res.ok && j.success) {
-          toast({ title: "Sent", description: j?.messageId ? `PDF sent to Telegram (message ${j.messageId})` : "PDF sent to Telegram" })
-          // refresh status
+        const j = await res.json().catch(() => ({ success: false, message: res.statusText }))
+        if (j.success) {
+          // Success case (can be 200 or other status codes)
+          const msg = j?.messageId 
+            ? `PDF sent to Telegram (message ${j.messageId})`
+            : "PDF sent to Telegram successfully"
+          toast({ title: "✓ Sent", description: msg })
+          // Refresh status and update display
+          await new Promise(resolve => setTimeout(resolve, 1000))
           const s = await fetch(`/api/export/status?date=${selectedDate}`).then((r) => r.json()).catch(() => null)
           setExportStatus(s?.record ?? null)
         } else {
-          // Friendly failure (auth missing, send failed, etc.)
-          toast({ title: "Send failed", description: j?.message || res.statusText || "Unknown error", variant: "destructive" })
+          // Failure case (show detailed error message)
+          const errorMsg = j?.message || "Failed to send PDF"
+          toast({ title: "✗ Send failed", description: errorMsg, variant: "destructive" })
         }
       }
     } catch (e) {

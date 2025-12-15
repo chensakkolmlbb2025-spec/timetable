@@ -60,7 +60,16 @@ export async function POST(req: Request) {
 
     try {
       const { botToken, chatId } = getTelegramConfig()
-      if (!botToken || !chatId) throw new Error("Missing Telegram configuration")
+      if (!botToken) {
+        const msg = "Missing Telegram bot token (LIP_TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN)"
+        console.error("export/send:", msg)
+        return NextResponse.json({ success: false, message: msg }, { status: 500 })
+      }
+      if (!chatId) {
+        const msg = "Missing Telegram chat ID (LIP_TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID)"
+        console.error("export/send:", msg)
+        return NextResponse.json({ success: false, message: msg }, { status: 500 })
+      }
 
       const result = await sendPdf(botToken, chatId, buffer, `daily-plan-${date}.pdf`, `Daily Plan — ${date}`)
       // Log success and persist message id + raw response when available
@@ -73,11 +82,12 @@ export async function POST(req: Request) {
       })
       return NextResponse.json({ success: true, messageId: messageId ?? null })
     } catch (err) {
-      console.error("Failed to send PDF via Telegram:", err)
+      const errorMsg = String(err)
+      console.error("export/send: Failed to send PDF via Telegram:", errorMsg)
       // record failed attempt
-      await incrementAttempt(userId, date, String(err))
-      await upsertExportRecord(userId, date, "failed", { error: String(err) })
-      return NextResponse.json({ success: false, message: String(err) }, { status: 502 })
+      await incrementAttempt(userId, date, errorMsg)
+      await upsertExportRecord(userId, date, "failed", { error: errorMsg })
+      return NextResponse.json({ success: false, message: errorMsg }, { status: 502 })
     }
   } catch (e) {
     console.error(e)
