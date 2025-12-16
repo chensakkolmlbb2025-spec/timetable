@@ -68,6 +68,7 @@ const PUBLIC_ROUTES = [
   "/",
   "/callback",
   "/reset-password/complete",
+  "/verify-email",
 ]
 
 // Cron routes that need secret validation

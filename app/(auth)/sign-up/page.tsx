@@ -40,9 +40,8 @@ export default function SignUpPage() {
     }
 
     if (needConfirm) {
-      // Show the check-your-email state instead of proceeding to onboarding
-      setNeedsConfirmation(true)
-      setLoading(false)
+      // Redirect to verify-email page with email pre-filled
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
       return
     }
 

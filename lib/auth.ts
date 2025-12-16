@@ -259,3 +259,45 @@ export async function sendPasswordResetEmail(email: string, redirectTo?: string)
     return { error: err?.message || String(err) }
   }
 }
+
+/**
+ * Resend verification email to a user
+ */
+export async function resendVerificationEmail(email: string, redirectTo?: string): Promise<{ error: string | null }> {
+  if (typeof window === "undefined") return { error: 'Not available on server' }
+  const supabase = createBrowserClient()
+  try {
+    const redirect = redirectTo || `${window.location.origin}/callback`
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: redirect,
+      },
+    })
+    if (error) {
+      // Handle rate limiting
+      if (error.status === 429 || error.message.includes('rate')) {
+        return { error: 'Too many requests. Please wait a few minutes before trying again.' }
+      }
+      return { error: error.message || String(error) }
+    }
+    return { error: null }
+  } catch (err: any) {
+    return { error: err?.message || String(err) }
+  }
+}
+
+/**
+ * Check if the current user's email is verified
+ */
+export async function isEmailVerified(): Promise<boolean> {
+  if (typeof window === "undefined") return false
+  const supabase = createBrowserClient()
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    return !!user?.email_confirmed_at
+  } catch {
+    return false
+  }
+}
