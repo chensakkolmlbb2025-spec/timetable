@@ -59,15 +59,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "No data for that date" }, { status: 204 })
     }
 
-    // Idempotency: if there's already a success record for this user/date, skip
-    try {
-      const existing = await getExportRecord(userId, date)
-      if (existing && existing.status === "success") {
-        return NextResponse.json({ success: true, message: "Already sent" })
-      }
-    } catch (e) {
-      console.error("Failed to check existing export record:", e)
-    }
+    // Manual sends: Allow multiple sends per day (no idempotency check)
+    // Only the automated cron has idempotency protection
 
     // Get profile name
     const { data: profile } = await admin.from("profiles").select("name").eq("id", userId).single()
@@ -93,16 +86,19 @@ export async function POST(req: Request) {
       const result = await sendPdf(botToken, chatId, buffer, `daily-plan-${date}.pdf`, `Daily Plan — ${date}`)
       // Log success and persist message id + raw response when available
       const messageId = result?.messageId
-      console.info("export/send: delivered via", result?.method, "messageId=", messageId)
+      console.info("export/send (manual): delivered via", result?.method, "messageId=", messageId)
       if (!messageId) console.warn("export/send: Telegram send returned no message id; delivery may have failed silently", result?.raw)
+      
+      // Record manual send - note: allows multiple sends per day
       await upsertExportRecord(userId, date, "success", {
         telegramMessageId: messageId ? String(messageId) : undefined,
         telegramResponse: result?.raw,
       })
+      
       return NextResponse.json({ success: true, messageId: messageId ?? null })
     } catch (err) {
       const errorMsg = String(err)
-      console.error("export/send: Failed to send PDF via Telegram:", errorMsg)
+      console.error("export/send (manual): Failed to send PDF via Telegram:", errorMsg)
       // record failed attempt
       await incrementAttempt(userId, date, errorMsg)
       await upsertExportRecord(userId, date, "failed", { error: errorMsg })
