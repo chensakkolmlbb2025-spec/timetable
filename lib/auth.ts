@@ -242,9 +242,16 @@ export async function sendPasswordResetEmail(email: string, redirectTo?: string)
   if (typeof window === "undefined") return { error: 'Not available on server' }
   const supabase = createBrowserClient()
   try {
-    const redirect = redirectTo || `${window.location.origin}/(auth)/reset-password/complete`
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirect })
+    // Use the callback page which will handle the token and redirect to password reset
+    const redirect = redirectTo || `${window.location.origin}/callback`
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { 
+      redirectTo: redirect 
+    })
     if (error) {
+      // Handle rate limiting
+      if (error.status === 429 || error.message.includes('rate')) {
+        return { error: 'Too many requests. Please wait a moment and try again.' }
+      }
       return { error: error.message || String(error) }
     }
     return { error: null }
