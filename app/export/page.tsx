@@ -420,18 +420,19 @@ export default function ExportPage() {
                <div className={cn(
                  "relative z-10 w-full max-w-[500px] transition-all duration-500",
                  // Enforce A4 Aspect Ratio (210mm / 297mm = ~0.707)
-                 "aspect-[210/297] bg-white shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10 rounded-sm sm:rounded-none"
+                 "aspect-[210/297] bg-white dark:bg-gray-100 shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10 rounded-sm sm:rounded-none overflow-hidden"
                )}>
                  {isGenerating ? (
-                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-20">
-                     <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 animate-spin mb-3 sm:mb-4" />
-                     <p className="text-xs sm:text-sm text-gray-400 font-medium animate-pulse">Rendering Document...</p>
+                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-gray-100 z-20">
+                     <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 dark:text-indigo-500 animate-spin mb-3 sm:mb-4" />
+                     <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-600 font-medium animate-pulse">Rendering Document...</p>
                    </div>
                  ) : previewUrl ? (
                    <iframe 
-                     src={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                     className="w-full h-full border-0 block" 
-                     title="PDF Preview" 
+                     src={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                     className="w-full h-full border-0 block bg-white" 
+                     title="PDF Preview"
+                     style={{ colorScheme: 'light' }}
                    />
                  ) : (
                    <EmptyPreviewState />

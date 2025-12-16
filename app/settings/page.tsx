@@ -108,22 +108,22 @@ export default function SettingsPage() {
             <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={() => handleThemeChange("light")}
-                className={`p-6 rounded-2xl border-2 transition-all ${
+                className={`p-6 rounded-2xl border-2 transition-all hover:shadow-md ${
                   theme === "light"
-                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
-                    : "border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-gray-300"
+                    ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 shadow-lg"
+                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
-                <Sun className="w-8 h-8 mx-auto mb-3 text-yellow-500" />
+                <Sun className="w-8 h-8 mx-auto mb-3 text-yellow-500 dark:text-yellow-400" />
                 <p className="text-sm font-medium text-gray-900 dark:text-white text-center">Light</p>
               </button>
 
               <button
                 onClick={() => handleThemeChange("dark")}
-                className={`p-6 rounded-2xl border-2 transition-all ${
+                className={`p-6 rounded-2xl border-2 transition-all hover:shadow-md ${
                   theme === "dark"
-                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
-                    : "border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-gray-300"
+                    ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 shadow-lg"
+                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
                 <Moon className="w-8 h-8 mx-auto mb-3 text-indigo-600 dark:text-indigo-400" />
@@ -132,10 +132,10 @@ export default function SettingsPage() {
 
               <button
                 onClick={() => handleThemeChange("system")}
-                className={`p-6 rounded-2xl border-2 transition-all ${
+                className={`p-6 rounded-2xl border-2 transition-all hover:shadow-md ${
                   theme === "system"
-                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
-                    : "border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 hover:border-gray-300"
+                    ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 shadow-lg"
+                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
                 <Monitor className="w-8 h-8 mx-auto mb-3 text-gray-600 dark:text-gray-400" />
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                   type="time"
                   value={dayStart}
                   onChange={(e) => setDayStart(e.target.value)}
-                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur"
+                  className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white dark:[color-scheme:dark]"
                 />
               </div>
 
@@ -174,7 +174,7 @@ export default function SettingsPage() {
                   type="time"
                   value={dayEnd}
                   onChange={(e) => setDayEnd(e.target.value)}
-                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur"
+                  className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white dark:[color-scheme:dark]"
                 />
               </div>
             </div>
