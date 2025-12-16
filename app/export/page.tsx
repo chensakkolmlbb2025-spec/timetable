@@ -424,8 +424,8 @@ export default function ExportPage() {
                )}>
                  {isGenerating ? (
                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-gray-100 z-20">
-                     <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 dark:text-indigo-500 animate-spin mb-3 sm:mb-4" />
-                     <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-600 font-medium animate-pulse">Rendering Document...</p>
+                     <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 dark:text-indigo-600 animate-spin mb-3 sm:mb-4" />
+                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-700 font-medium animate-pulse">Rendering Document...</p>
                    </div>
                  ) : previewUrl ? (
                    <iframe 
@@ -451,12 +451,12 @@ export default function ExportPage() {
 
 function EmptyPreviewState() {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-gray-900 text-center p-8">
-      <div className="w-16 h-16 bg-white/50 dark:bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
-        <FileText className="w-8 h-8 text-gray-300" />
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-gray-100 text-center p-8">
+      <div className="w-16 h-16 bg-white/50 dark:bg-gray-200/50 rounded-full flex items-center justify-center mb-4">
+        <FileText className="w-8 h-8 text-gray-300 dark:text-gray-400" />
       </div>
-      <h3 className="text-gray-900 dark:text-white font-semibold mb-1">No Data to Preview</h3>
-      <p className="text-gray-500 text-sm max-w-[200px]">
+      <h3 className="text-gray-900 dark:text-gray-800 font-semibold mb-1">No Data to Preview</h3>
+      <p className="text-gray-500 dark:text-gray-600 text-sm max-w-[200px]">
         Add time blocks to your schedule for this date to generate a report.
       </p>
     </div>
