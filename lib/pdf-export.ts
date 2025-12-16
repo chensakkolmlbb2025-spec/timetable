@@ -167,15 +167,9 @@ export function generateWeeklyPDF({ weekStart, blocks, userName }: WeeklyPDFData
   // Calculate week end
   const weekEnd = addDays(weekStart, 6)
 
-  // Header with gradient effect (simulated)
+  // Header background (solid indigo)
   doc.setFillColor(99, 102, 241) // indigo-500
   doc.rect(0, 0, pageWidth, 22, "F")
-  
-  // Add subtle purple gradient overlay
-  doc.setFillColor(139, 92, 246) // purple-500
-  doc.setGState(new (doc as any).GState({ opacity: 0.3 }))
-  doc.rect(pageWidth * 0.5, 0, pageWidth * 0.5, 22, "F")
-  doc.setGState(new (doc as any).GState({ opacity: 1 }))
 
   // Header text
   doc.setTextColor(255, 255, 255)
