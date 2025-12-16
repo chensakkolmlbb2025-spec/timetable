@@ -24,6 +24,8 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 // ============================================================================
 // ANIMATED BACKGROUND
@@ -104,10 +106,12 @@ function AnimatedBackground() {
 // NAVIGATION
 // ============================================================================
 
-function Navigation() {
+function Navigation({ onOpenFirstEntry }: { onOpenFirstEntry?: () => void }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
+  // const [showFirstEntry, setShowFirstEntry] = useState(false)
+  const { user, signOut } = useAuth()
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handleScroll)
@@ -156,23 +160,42 @@ function Navigation() {
             
             {/* CTA Buttons */}
             <div className="hidden md:flex items-center gap-3">
-              <Link
-                href="/sign-in"
-                className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/sign-up"
-                className={cn(
-                  "px-5 py-2.5 rounded-xl text-sm font-semibold",
-                  "bg-gradient-to-r from-blue-500 to-purple-600 text-white",
-                  "shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40",
-                  "hover:scale-105 transition-all duration-200"
-                )}
-              >
-                Get Started Free
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={async () => { try { await signOut() } catch (e) { console.error(e) } }}
+                    className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors bg-white/5 rounded-xl"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/sign-in"
+                    className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                  <button
+                    onClick={() => onOpenFirstEntry && onOpenFirstEntry()}
+                    className={cn(
+                      "px-5 py-2.5 rounded-xl text-sm font-semibold",
+                      "bg-gradient-to-r from-blue-500 to-purple-600 text-white",
+                      "shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40",
+                      "hover:scale-105 transition-all duration-200"
+                    )}
+                  >
+                    Get Started Free
+                  </button>
+                </>
+              )}
             </div>
             
             {/* Mobile menu button */}
@@ -199,14 +222,17 @@ function Navigation() {
               <MobileNavLink href="#features" onClick={() => setMobileMenuOpen(false)}>Features</MobileNavLink>
               <MobileNavLink href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How it Works</MobileNavLink>
               <MobileNavLink href="#testimonials" onClick={() => setMobileMenuOpen(false)}>Testimonials</MobileNavLink>
-              <div className="h-px bg-white/10 my-2" />
-              <Link href="/sign-in" className="text-white/70 hover:text-white py-2">Sign In</Link>
-              <Link
-                href="/sign-up"
-                className="px-5 py-3 rounded-xl text-center font-semibold bg-gradient-to-r from-blue-500 to-purple-600 text-white"
-              >
-                Get Started Free
-              </Link>
+              {user ? (
+                <>
+                  <Link href="/dashboard" className="block px-4 py-2 rounded text-sm font-medium text-white/80">Dashboard</Link>
+                  <button onClick={async () => { await signOut(); setMobileMenuOpen(false) }} className="block px-4 py-2 rounded text-sm font-medium text-white/80 text-left">Sign Out</button>
+                </>
+              ) : (
+                <>
+                  <Link href="/sign-in" className="block px-4 py-2 rounded text-sm font-medium text-white/80">Sign In</Link>
+                  <button onClick={() => { onOpenFirstEntry && onOpenFirstEntry(); setMobileMenuOpen(false) }} className="block px-4 py-2 rounded text-sm font-medium text-white/80">Get Started</button>
+                </>
+              )}
             </div>
           </motion.div>
         )}
@@ -792,7 +818,7 @@ function TestimonialCard({ testimonial, index, isInView }: { testimonial: typeof
 // CTA SECTION
 // ============================================================================
 
-function CTASection() {
+function CTASection({ onOpenFirstEntry }: { onOpenFirstEntry?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
@@ -822,8 +848,8 @@ function CTASection() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/sign-up"
+              <button
+                onClick={() => (onOpenFirstEntry ? onOpenFirstEntry() : window.location.assign('/sign-up'))}
                 className={cn(
                   "group px-8 py-4 rounded-2xl font-semibold text-lg",
                   "bg-white text-slate-900",
@@ -834,7 +860,7 @@ function CTASection() {
               >
                 Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              </button>
               
               <p className="text-white/50 text-sm">No credit card required</p>
             </div>
@@ -880,12 +906,74 @@ function Footer() {
 }
 
 // ============================================================================
+// FIRST ENTRY MODAL
+// ============================================================================
+
+function FirstEntryModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const router = useRouter()
+  const { signUp } = useAuth()
+
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    setError("")
+    if (!email || !password) {
+      setError('Email and password are required')
+      return
+    }
+    setLoading(true)
+    try {
+      const { error: signUpError, needsConfirmation } = await signUp(email, password, name)
+      if (signUpError) {
+        setError(signUpError)
+        setLoading(false)
+        return
+      }
+      if (needsConfirmation) {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+        return
+      }
+      router.push('/onboarding')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create account')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6">
+        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Create your account</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Start organizing your day in minutes.</p>
+        {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
+        <form onSubmit={handleCreate} className="space-y-3">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name (optional)" />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" required />
+          <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password (min 6 chars)" required />
+          <div className="flex items-center gap-3">
+            <Button type="submit" className="flex-1" disabled={loading}>{loading ? 'Creating...' : 'Create Account'}</Button>
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
 // MAIN PAGE
 // ============================================================================
 
 export default function LandingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const [showFirstEntry, setShowFirstEntry] = useState(false)
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -910,13 +998,14 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen text-white overflow-x-hidden">
       <AnimatedBackground />
-      <Navigation />
+      <Navigation onOpenFirstEntry={() => setShowFirstEntry(true)} />
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />
       <TestimonialsSection />
-      <CTASection />
+      <CTASection onOpenFirstEntry={() => setShowFirstEntry(true)} />
       <Footer />
+      {showFirstEntry && <FirstEntryModal onClose={() => setShowFirstEntry(false)} />}
     </main>
   )
 }
