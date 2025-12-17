@@ -111,11 +111,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = useCallback(async () => {
     try {
       const supabase = createClient()
+      
+      // First check if there's a current session before trying to refresh
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      
+      // Only refresh if there's a valid session
+      if (!currentSession) {
+        return
+      }
+      
       const { data, error } = await supabase.auth.refreshSession()
 
       if (error) {
-        console.error('[auth] Session refresh failed:', error.message)
-        // Session invalid, sign out
+        // Don't log expected errors when there's no session
+        if (!error.message.includes('refresh_token_not_found')) {
+          console.error('[auth] Session refresh failed:', error.message)
+        }
+        // Session invalid, clear state
         if (error.message.includes('refresh_token') || error.message.includes('session')) {
           updateState({ user: null, session: null })
         }
@@ -270,7 +282,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   useEffect(() => {
     function handleVisibilityChange() {
-      if (document.visibilityState === 'visible' && state.session) {
+      // Only refresh if we have a session and tab becomes visible
+      if (document.visibilityState === 'visible' && state.session && state.user) {
         // Refresh session when tab becomes visible
         refreshSession()
       }
@@ -278,7 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [state.session, refreshSession])
+  }, [state.session, state.user, refreshSession])
 
   /**
    * Sign in with email and password
