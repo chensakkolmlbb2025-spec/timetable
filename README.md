@@ -191,18 +191,38 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
    npm run test:telegram
    ```
 
-### GitHub Actions Cron
+### Vercel Cron (Automated Daily Export)
 
-The app includes a daily export cron job. To set it up:
+The app uses **Vercel Cron Jobs** for daily Telegram exports:
 
-1. **Add Repository Secrets**:
-   - Go to GitHub → Settings → Secrets and variables → Actions
-   - Add secrets:
-     - `CRON_TARGET_URL`: Your production URL (e.g., `https://timetable-one-azure.vercel.app`)
-     - `CRON_SECRET`: Same as in `.env.local`
+1. **Configuration**: Already set in `vercel.json`
+   ```json
+   {
+     "crons": [
+       {
+         "path": "/api/cron/daily-report",
+         "schedule": "0 21 * * *"
+       }
+     ]
+   }
+   ```
 
-2. **Schedule**: Runs daily at 21:00 UTC (04:00 Cambodia time)
-3. **Workflow**: See `.github/workflows/daily-telegram-export.yml`
+2. **Schedule**: Runs daily at **21:00 UTC** = **04:00 Cambodia Time (UTC+7)**
+
+3. **Setup in Vercel**:
+   - Add `CRON_SECRET` environment variable (generate with `openssl rand -base64 32`)
+   - Deploy → Vercel automatically registers the cron job
+   - View in: Vercel Dashboard → Settings → Crons
+
+4. **Manual Test**:
+   ```bash
+   curl -X POST https://your-site.vercel.app/api/cron/daily-report \
+     -H "Authorization: Bearer YOUR_CRON_SECRET"
+   ```
+
+5. **Documentation**: See `/docs/vercel-cron-setup.md` for complete guide
+
+**Note:** GitHub Actions workflows (`.github/workflows/`) are deprecated in favor of Vercel Cron.
 
 ---
 

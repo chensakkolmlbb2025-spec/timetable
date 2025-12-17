@@ -8,12 +8,19 @@ import { getTimeBlocksForDateFromAdmin } from "@/lib/storage"
 
 export async function POST(req: Request) {
   try {
-    // Optional secret protection
-    const secret = process.env.CRON_SECRET
-    if (secret) {
-      const header = req.headers.get("x-cron-secret")
-      if (!header || header !== secret) {
-        return NextResponse.json({ success: false, message: "Invalid cron secret" }, { status: 401 })
+    // Vercel Cron authentication
+    // Vercel automatically adds Authorization: Bearer <CRON_SECRET> header
+    const authHeader = req.headers.get('authorization')
+    const cronSecret = process.env.CRON_SECRET
+    
+    if (cronSecret) {
+      // Check both Vercel format (Authorization: Bearer) and manual format (x-cron-secret)
+      const headerSecret = req.headers.get("x-cron-secret")
+      const bearerToken = authHeader?.replace('Bearer ', '')
+      
+      if (bearerToken !== cronSecret && headerSecret !== cronSecret) {
+        console.warn('Unauthorized cron request attempt')
+        return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 })
       }
     }
 
