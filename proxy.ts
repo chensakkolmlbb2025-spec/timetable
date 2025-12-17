@@ -125,17 +125,13 @@ async function createMiddlewareClient(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: any) {
+          // Update both request and response cookies
           request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          })
           response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: any) {
+          // Update both request and response cookies
           request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          })
           response.cookies.set({ name, value: '', ...options })
         },
       },
@@ -226,8 +222,13 @@ export async function proxy(request: NextRequest) {
   // Get session for protected and auth routes
   const { supabase, response } = await createMiddlewareClient(request)
   
-  // Refresh session - this is important for keeping the session alive
+  // Check session - important for keeping the session alive
+  // Use getUser() which validates the JWT token
   const { data: { user }, error } = await supabase.auth.getUser()
+  
+  // If there's an error getting the user, treat as not authenticated
+  // This prevents redirect loops when there are session issues
+  const isAuthenticated = !error && !!user
   
   // Add security headers to response
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
@@ -236,7 +237,7 @@ export async function proxy(request: NextRequest) {
 
   // Check protected routes
   if (matchesRoute(pathname, PROTECTED_ROUTES)) {
-    if (!user) {
+    if (!isAuthenticated) {
       // Redirect to sign-in with return URL
       const signInUrl = request.nextUrl.clone()
       signInUrl.pathname = '/sign-in'
@@ -253,7 +254,7 @@ export async function proxy(request: NextRequest) {
 
   // Check auth routes (redirect to dashboard if already authenticated)
   if (matchesRoute(pathname, AUTH_ROUTES)) {
-    if (user) {
+    if (isAuthenticated) {
       const dashboardUrl = request.nextUrl.clone()
       dashboardUrl.pathname = '/dashboard'
       
