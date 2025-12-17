@@ -125,14 +125,23 @@ async function createMiddlewareClient(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          // Update both request and response cookies
-          request.cookies.set({ name, value, ...options })
-          response.cookies.set({ name, value, ...options })
+          // Set cookies on both request and response
+          // Don't use httpOnly as browser client needs to read these
+          const cookieOptions = {
+            ...options,
+            path: '/',
+          }
+          request.cookies.set({ name, value, ...cookieOptions })
+          response.cookies.set({ name, value, ...cookieOptions })
         },
         remove(name: string, options: any) {
-          // Update both request and response cookies
-          request.cookies.set({ name, value: '', ...options })
-          response.cookies.set({ name, value: '', ...options })
+          const cookieOptions = {
+            ...options,
+            path: '/',
+            maxAge: 0,
+          }
+          request.cookies.set({ name, value: '', ...cookieOptions })
+          response.cookies.set({ name, value: '', ...cookieOptions })
         },
       },
     }
@@ -222,13 +231,13 @@ export async function proxy(request: NextRequest) {
   // Get session for protected and auth routes
   const { supabase, response } = await createMiddlewareClient(request)
   
-  // Check session - important for keeping the session alive
-  // Use getUser() which validates the JWT token
-  const { data: { user }, error } = await supabase.auth.getUser()
+  // First try to get session from cookies (fast, no network request)
+  const { data: { session } } = await supabase.auth.getSession()
   
-  // If there's an error getting the user, treat as not authenticated
-  // This prevents redirect loops when there are session issues
-  const isAuthenticated = !error && !!user
+  // Determine authentication status
+  // If we have a session, the user is authenticated
+  // This avoids the network call to getUser() which can timeout or fail
+  const isAuthenticated = !!session?.user
   
   // Add security headers to response
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {

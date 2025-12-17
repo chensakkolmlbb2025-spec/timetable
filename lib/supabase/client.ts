@@ -34,12 +34,10 @@ export function createClient(): SupabaseClient {
     auth: {
       // Enable automatic token refresh
       autoRefreshToken: true,
-      // Persist session in localStorage
+      // Persist session in cookies (default for @supabase/ssr)
       persistSession: true,
       // Detect session in URL (for OAuth callbacks)
       detectSessionInUrl: true,
-      // Storage key for session
-      storageKey: 'supabase-auth-token',
       // Flow type for PKCE
       flowType: 'pkce',
     },
