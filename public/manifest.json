@@ -9,54 +9,45 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/apple-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ],
   "categories": ["productivity", "business", "utilities"],
-  "screenshots": [
-    {
-      "src": "/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Today's Schedule",
       "short_name": "Today",
       "description": "View today's time blocks",
-      "url": "/dashboard",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/dashboard"
     },
     {
       "name": "Add Time Block",
       "short_name": "Add Block",
       "description": "Create a new time block",
-      "url": "/dashboard/new",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/dashboard/new"
     },
     {
-      "name": "Analytics",
-      "short_name": "Analytics",
-      "description": "View your productivity analytics",
-      "url": "/analytics",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "name": "Weekly View",
+      "short_name": "Week",
+      "description": "View your weekly schedule",
+      "url": "/week"
+    },
+    {
+      "name": "Export PDF",
+      "short_name": "Export",
+      "description": "Export schedule as PDF",
+      "url": "/export"
     }
-  ]
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }
