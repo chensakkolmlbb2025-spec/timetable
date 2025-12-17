@@ -30,6 +30,7 @@ const SECURITY_HEADERS = {
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co https://*.vercel.app https://va.vercel-scripts.com wss://*.supabase.co https://api.telegram.org",
+    "frame-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
