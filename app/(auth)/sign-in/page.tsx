@@ -123,6 +123,8 @@ function SignInContent() {
         setErrors({ general: signInError })
         setLoading(false)
       } else {
+        // Give a moment for the auth state to update and cookies to be set
+        await new Promise(resolve => setTimeout(resolve, 100))
         const redirectTo = searchParams.get("redirect") || NAV_ROUTES.DASHBOARD
         router.push(redirectTo)
       }

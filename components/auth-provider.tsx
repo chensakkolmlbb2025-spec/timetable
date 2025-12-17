@@ -315,8 +315,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error.message }
       }
 
-      if (!data.user) {
+      if (!data.user || !data.session) {
         return { error: 'Sign in failed. Please try again.' }
+      }
+
+      // Update state immediately with the session data
+      // This ensures the UI updates before the auth listener fires
+      if (mountedRef.current) {
+        updateState({
+          user: mapSupabaseUser(data.user),
+          session: data.session,
+          loading: false,
+          initialized: true,
+        })
+        setupRefreshTimer(data.session)
       }
 
       return { error: null }
@@ -324,7 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('[auth] Sign in error:', error)
       return { error: 'An unexpected error occurred. Please try again.' }
     }
-  }, [])
+  }, [updateState, setupRefreshTimer])
 
   /**
    * Sign up with email, password, and name
