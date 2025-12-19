@@ -29,7 +29,12 @@ export default function WeekViewPage() {
   const [weekStart, setWeekStart] = useState(() => {
     const today = new Date()
     const start = new Date(today)
-    start.setDate(today.getDate() - today.getDay())
+    // Get the Sunday of the current week
+    // getDay() returns 0 for Sunday, 1 for Monday, etc.
+    const dayOfWeek = start.getDay()
+    start.setDate(start.getDate() - dayOfWeek)
+    // Set to midnight to avoid timezone issues
+    start.setHours(0, 0, 0, 0)
     return start
   })
   const [blocks, setBlocks] = useState<TimeBlock[]>([])
@@ -56,32 +61,49 @@ export default function WeekViewPage() {
     for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i)
       const dateStr = formatDate(date)
+      console.log(`[WeekView] Loading blocks for day ${i} (${DAY_NAMES[i]}): ${dateStr}`)
       const dayBlocks = await getTimeBlocksForDate(user.id, dateStr)
+      console.log(`[WeekView] Found ${dayBlocks.length} blocks for ${DAY_NAMES[i]}`)
       weekBlocks.push(...dayBlocks)
     }
 
+    console.log(`[WeekView] Total blocks loaded: ${weekBlocks.length}`)
     setBlocks(weekBlocks)
   }
 
   const handlePreviousWeek = () => {
-    setWeekStart((prev) => addDays(prev, -7))
+    setWeekStart((prev) => {
+      const newStart = addDays(prev, -7)
+      newStart.setHours(0, 0, 0, 0)
+      return newStart
+    })
   }
 
   const handleNextWeek = () => {
-    setWeekStart((prev) => addDays(prev, 7))
+    setWeekStart((prev) => {
+      const newStart = addDays(prev, 7)
+      newStart.setHours(0, 0, 0, 0)
+      return newStart
+    })
   }
 
   const handleThisWeek = () => {
     const today = new Date()
     const start = new Date(today)
-    start.setDate(today.getDate() - today.getDay())
+    const dayOfWeek = start.getDay()
+    start.setDate(start.getDate() - dayOfWeek)
+    start.setHours(0, 0, 0, 0)
     setWeekStart(start)
   }
 
   const getBlocksForDay = (dayIndex: number): TimeBlock[] => {
     const date = addDays(weekStart, dayIndex)
     const dateStr = formatDate(date)
-    return blocks.filter((b) => b.date === dateStr).sort((a, b) => a.startTime.localeCompare(b.startTime))
+    const dayBlocks = blocks.filter((b) => b.date === dateStr).sort((a, b) => a.startTime.localeCompare(b.startTime))
+    
+    console.log(`[WeekView] getBlocksForDay(${dayIndex} - ${DAY_NAMES[dayIndex]}): dateStr=${dateStr}, found ${dayBlocks.length} blocks`)
+    
+    return dayBlocks
   }
 
   const handleDownloadWeek = () => {
@@ -154,6 +176,12 @@ export default function WeekViewPage() {
             const isToday = formatDate(new Date()) === dateStr
             const completed = dayBlocks.filter((b) => b.completed).length
             const total = dayBlocks.length
+            
+            // Verify day alignment (0 = Sunday in both DAY_NAMES and getDay())
+            const actualDayOfWeek = date.getDay()
+            if (actualDayOfWeek !== dayIndex) {
+              console.warn(`[WeekView] Day mismatch! dayIndex=${dayIndex} but date.getDay()=${actualDayOfWeek} for ${dateStr}`)
+            }
 
               return (
               <Card
@@ -162,7 +190,9 @@ export default function WeekViewPage() {
               >
                 <div className="mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{DAY_NAMES[dayIndex]}</h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{date.getDate()}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </p>
                   {total > 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       {completed}/{total} completed
