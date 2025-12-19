@@ -16,17 +16,54 @@ CREATE INDEX IF NOT EXISTS idx_time_blocks_repeat_days
 ON public.time_blocks USING GIN (repeat_days) 
 WHERE repeat_days IS NOT NULL;
 
--- Optional: Add a check constraint to validate the array values
--- This ensures only valid day indices (0-6) are stored
+-- Simple check constraint to ensure repeat_days is either NULL or a JSON array
+-- The application layer will validate that values are 0-6
 ALTER TABLE public.time_blocks
-ADD CONSTRAINT chk_repeat_days_valid 
+ADD CONSTRAINT chk_repeat_days_is_array 
 CHECK (
   repeat_days IS NULL 
-  OR (
-    jsonb_typeof(repeat_days) = 'array' 
-    AND NOT EXISTS (
-      SELECT 1 FROM jsonb_array_elements(repeat_days) elem 
-      WHERE (elem::int < 0 OR elem::int > 6)
-    )
-  )
+  OR jsonb_typeof(repeat_days) = 'array'
 );
+
+-- Optional: Create a function to validate repeat_days values (for use in triggers if needed)
+CREATE OR REPLACE FUNCTION public.validate_repeat_days(days jsonb)
+RETURNS boolean
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  IF days IS NULL THEN
+    RETURN true;
+  END IF;
+  
+  IF jsonb_typeof(days) != 'array' THEN
+    RETURN false;
+  END IF;
+  
+  -- Check each element is a valid day index (0-6)
+  RETURN NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(days) elem 
+    WHERE (elem::int < 0 OR elem::int > 6)
+  );
+END;
+$$;
+
+-- Create a trigger to validate repeat_days on insert/update
+CREATE OR REPLACE FUNCTION public.check_repeat_days_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT public.validate_repeat_days(NEW.repeat_days) THEN
+    RAISE EXCEPTION 'repeat_days must be NULL or an array of integers 0-6';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Drop trigger if exists and recreate
+DROP TRIGGER IF EXISTS trg_check_repeat_days ON public.time_blocks;
+CREATE TRIGGER trg_check_repeat_days
+BEFORE INSERT OR UPDATE ON public.time_blocks
+FOR EACH ROW
+EXECUTE FUNCTION public.check_repeat_days_trigger();
