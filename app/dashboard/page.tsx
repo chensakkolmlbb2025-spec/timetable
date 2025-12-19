@@ -2,7 +2,7 @@
 
 // Calendar removed from dashboard empty state per user request
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, Plus, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,15 @@ export default function DashboardPage() {
     }
   }, [user, loading, router])
 
+  const loadBlocks = useCallback(async () => {
+    if (!user) return
+    const dateStr = formatDate(currentDate)
+    console.log('[Dashboard] Loading blocks for date:', dateStr)
+    const dayBlocks = await getTimeBlocksForDate(user.id, dateStr)
+    console.log('[Dashboard] Loaded blocks:', dayBlocks.length)
+    setBlocks(dayBlocks)
+  }, [user, currentDate])
+
   useEffect(() => {
     if (user) {
       const load = async () => {
@@ -52,7 +61,32 @@ export default function DashboardPage() {
       }
       load()
     }
-  }, [user, currentDate])
+  }, [user, currentDate, loadBlocks])
+
+  // Reload blocks when page becomes visible (e.g., returning from edit page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        console.log('[Dashboard] Page became visible, reloading blocks...')
+        loadBlocks()
+      }
+    }
+
+    const handleFocus = () => {
+      if (user) {
+        console.log('[Dashboard] Window gained focus, reloading blocks...')
+        loadBlocks()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user, loadBlocks])
 
   // Keep quickTime in sync with user preferences when loaded
   useEffect(() => {
@@ -65,13 +99,6 @@ export default function DashboardPage() {
     const date = new Date()
     date.setHours(h, m + duration)
     return date.toTimeString().slice(0, 5)
-  }
-
-  const loadBlocks = async () => {
-    if (!user) return
-    const dateStr = formatDate(currentDate)
-    const dayBlocks = await getTimeBlocksForDate(user.id, dateStr)
-    setBlocks(dayBlocks)
   }
 
   const handlePreviousDay = () => {

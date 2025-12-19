@@ -97,6 +97,7 @@ export default function EditTimeBlockPage() {
         return
       }
 
+      // Build updated block with ALL current form values
       const updatedBlock: TimeBlock = {
         ...block,
         title: title.trim(),
@@ -108,24 +109,39 @@ export default function EditTimeBlockPage() {
         completed,
         repeatDaily,
         repeatDays: repeatDays.length > 0 ? repeatDays : undefined,
+        // Ensure we preserve these fields
+        userId: block.userId,
+        createdAt: block.createdAt,
       }
 
+      console.log('[EditPage] Current form state:', {
+        startTime,
+        endTime,
+        repeatDaily,
+        repeatDays,
+      })
+      
       console.log('[EditPage] Saving block:', {
         id: updatedBlock.id,
         title: updatedBlock.title,
         date: updatedBlock.date,
+        startTime: updatedBlock.startTime,
+        endTime: updatedBlock.endTime,
         repeatDaily: updatedBlock.repeatDaily,
-        repeatDays: updatedBlock.repeatDays
+        repeatDays: updatedBlock.repeatDays,
       })
       
       await saveTimeBlock(updatedBlock)
       console.log('[EditPage] Block saved successfully, redirecting...')
       
       // Force a small delay to ensure database write completes
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 200))
       
-      // Navigate back to dashboard
-      router.push(`/dashboard?date=${date}`)
+      // Force refresh to clear any cached data
+      router.refresh()
+      
+      // Navigate back to dashboard with cache bust
+      router.push(`/dashboard?date=${date}&t=${Date.now()}`)
     } catch (err) {
       console.error("[EditPage] Error updating time block:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to update time block"
