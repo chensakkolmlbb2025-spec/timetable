@@ -4,11 +4,12 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Trash2, Check } from "lucide-react"
+import { ArrowLeft, Trash2, Check, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { DashboardNav } from "@/components/dashboard-nav"
+import { RepeatDaysSelector } from "@/components/ui/repeat-days-selector"
 import { useAuth } from "@/components/auth-provider"
 import { getTimeBlocks, saveTimeBlock, deleteTimeBlock } from "@/lib/storage"
 import type { TimeBlock } from "@/lib/types"
@@ -28,6 +29,8 @@ export default function EditTimeBlockPage() {
   const [category, setCategory] = useState<TimeBlock["category"]>("work")
   const [completed, setCompleted] = useState(false)
   const [repeatDaily, setRepeatDaily] = useState(false)
+  const [repeatDays, setRepeatDays] = useState<number[]>([])
+  const [showRepeatOptions, setShowRepeatOptions] = useState(false)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -55,7 +58,9 @@ export default function EditTimeBlockPage() {
         setEndTime(foundBlock.endTime)
         setCategory(foundBlock.category)
         setCompleted(foundBlock.completed)
-  setRepeatDaily(!!foundBlock.repeatDaily)
+        setRepeatDaily(!!foundBlock.repeatDaily)
+        setRepeatDays(foundBlock.repeatDays || [])
+        setShowRepeatOptions(!!foundBlock.repeatDaily || (foundBlock.repeatDays && foundBlock.repeatDays.length > 0) || false)
       }
       run()
 
@@ -87,6 +92,7 @@ export default function EditTimeBlockPage() {
       category,
       completed,
       repeatDaily,
+      repeatDays: repeatDays.length > 0 ? repeatDays : undefined,
     }
 
     await saveTimeBlock(updatedBlock)
@@ -251,9 +257,39 @@ export default function EditTimeBlockPage() {
               </div>
 
               <div className="flex items-center gap-3 mt-2">
-                <input id="repeatDaily" type="checkbox" checked={repeatDaily} onChange={(e) => setRepeatDaily(e.target.checked)} className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-0" />
-                <label htmlFor="repeatDaily" className="text-sm text-gray-700 dark:text-gray-300">Repeat every day</label>
+                <button
+                  type="button"
+                  onClick={() => setShowRepeatOptions(!showRepeatOptions)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                >
+                  <Repeat className="w-4 h-4" />
+                  Repeat Schedule
+                  <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+                    repeatDaily || repeatDays.length > 0
+                      ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                  }`}>
+                    {repeatDaily ? "Daily" : repeatDays.length > 0 ? `${repeatDays.length} days` : "Off"}
+                  </span>
+                </button>
               </div>
+              
+              {showRepeatOptions && (
+                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                  <RepeatDaysSelector
+                    selectedDays={repeatDays}
+                    onChange={(days) => {
+                      setRepeatDays(days)
+                      if (days.length > 0) setRepeatDaily(false)
+                    }}
+                    repeatDaily={repeatDaily}
+                    onRepeatDailyChange={(daily) => {
+                      setRepeatDaily(daily)
+                      if (daily) setRepeatDays([])
+                    }}
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Category *</label>

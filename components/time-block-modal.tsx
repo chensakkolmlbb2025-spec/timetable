@@ -1,12 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { X, Check, Trash2, Edit2 } from "lucide-react"
+import { X, Check, Trash2, Edit2, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RepeatDaysSelector, formatSelectedDays } from "@/components/ui/repeat-days-selector"
 import type { TimeBlock } from "@/lib/types"
 
 interface TimeBlockModalProps {
@@ -111,11 +112,24 @@ export function TimeBlockModal({ block, isOpen, onClose, onSave, onDelete, onTog
                   id="repeatDaily"
                   type="checkbox"
                   checked={!!editedBlock.repeatDaily}
-                  onChange={(e) => setEditedBlock({ ...editedBlock, repeatDaily: e.target.checked })}
+                  onChange={(e) => setEditedBlock({ ...editedBlock, repeatDaily: e.target.checked, repeatDays: e.target.checked ? undefined : editedBlock.repeatDays })}
                   className="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-0"
                 />
                 <label htmlFor="repeatDaily" className="text-sm text-gray-700 dark:text-gray-300">Repeat every day</label>
               </div>
+
+              {!editedBlock.repeatDaily && (
+                <div className="mt-3">
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Repeat className="w-4 h-4" />
+                    Repeat on specific days
+                  </Label>
+                  <RepeatDaysSelector
+                    selectedDays={editedBlock.repeatDays || []}
+                    onChange={(days) => setEditedBlock({ ...editedBlock, repeatDays: days.length > 0 ? days : undefined })}
+                  />
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="category">Category</Label>
@@ -170,6 +184,14 @@ export function TimeBlockModal({ block, isOpen, onClose, onSave, onDelete, onTog
                 <div>
                   <Label className="text-gray-500 dark:text-gray-400">Repeats</Label>
                   <p className="mt-1 text-gray-900 dark:text-white">Every day</p>
+                </div>
+              )}
+              {!block.repeatDaily && block.repeatDays && block.repeatDays.length > 0 && (
+                <div>
+                  <Label className="text-gray-500 dark:text-gray-400">Repeats</Label>
+                  <p className="mt-1 text-gray-900 dark:text-white capitalize">
+                    {formatSelectedDays(block.repeatDays)}
+                  </p>
                 </div>
               )}
             </>

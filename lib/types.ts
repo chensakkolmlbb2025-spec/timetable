@@ -17,8 +17,22 @@ export interface TimeBlock {
   color: string
   completed: boolean
   repeatDaily?: boolean
+  repeatDays?: number[] // Array of day indices: 0=Sunday, 1=Monday, ..., 6=Saturday
   createdAt: string
 }
+
+// Day of week constants for repeatDays
+export const DAYS_OF_WEEK = [
+  { index: 0, short: "Sun", full: "Sunday" },
+  { index: 1, short: "Mon", full: "Monday" },
+  { index: 2, short: "Tue", full: "Tuesday" },
+  { index: 3, short: "Wed", full: "Wednesday" },
+  { index: 4, short: "Thu", full: "Thursday" },
+  { index: 5, short: "Fri", full: "Friday" },
+  { index: 6, short: "Sat", full: "Saturday" },
+] as const
+
+export type DayIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
 export interface UserPreferences {
   userId: string
