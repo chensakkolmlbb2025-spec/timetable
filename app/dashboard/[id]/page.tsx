@@ -81,36 +81,73 @@ export default function EditTimeBlockPage() {
     if (!user || !block) return
 
     setError("")
+    setSaving(true)
 
-    // Validation
-    if (startTime >= endTime) {
-      setError("End time must be after start time")
-      return
+    try {
+      // Validation
+      if (!title.trim()) {
+        setError("Title is required")
+        setSaving(false)
+        return
+      }
+
+      if (startTime >= endTime) {
+        setError("End time must be after start time")
+        setSaving(false)
+        return
+      }
+
+      const updatedBlock: TimeBlock = {
+        ...block,
+        title: title.trim(),
+        description: description?.trim() || undefined,
+        date,
+        startTime,
+        endTime,
+        category,
+        completed,
+        repeatDaily,
+        repeatDays: repeatDays.length > 0 ? repeatDays : undefined,
+      }
+
+      console.log('[EditPage] Saving block:', {
+        id: updatedBlock.id,
+        title: updatedBlock.title,
+        date: updatedBlock.date,
+        repeatDaily: updatedBlock.repeatDaily,
+        repeatDays: updatedBlock.repeatDays
+      })
+      
+      await saveTimeBlock(updatedBlock)
+      console.log('[EditPage] Block saved successfully, redirecting...')
+      
+      // Force a small delay to ensure database write completes
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Navigate back to dashboard
+      router.push(`/dashboard?date=${date}`)
+    } catch (err) {
+      console.error("[EditPage] Error updating time block:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to update time block"
+      setError(errorMessage)
+      setSaving(false)
     }
-
-  setSaving(true)
-
-    const updatedBlock: TimeBlock = {
-      ...block,
-      title,
-      description: description || undefined,
-      date,
-      startTime,
-      endTime,
-      category,
-      completed,
-      repeatDaily,
-      repeatDays: repeatDays.length > 0 ? repeatDays : undefined,
-    }
-
-    await saveTimeBlock(updatedBlock)
-    router.push(`/dashboard?date=${date}`)
   }
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this time block?")) return
-    await deleteTimeBlock(blockId)
-    router.push("/dashboard")
+    
+    setError("")
+    setSaving(true)
+    
+    try {
+      await deleteTimeBlock(blockId)
+      router.push("/dashboard")
+    } catch (err) {
+      console.error("Error deleting time block:", err)
+      setError(err instanceof Error ? err.message : "Failed to delete time block")
+      setSaving(false)
+    }
   }
 
   const handleToggleComplete = () => {
