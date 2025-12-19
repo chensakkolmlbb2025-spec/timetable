@@ -34,6 +34,14 @@ export default function EditTimeBlockPage() {
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
 
+  // Helper to check if task has any repeat schedule
+  const hasRepeatSchedule = repeatDaily || repeatDays.length > 0
+  const repeatSummary = repeatDaily 
+    ? "Every day" 
+    : repeatDays.length > 0 
+      ? `${repeatDays.length} selected days`
+      : "No repeat"
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/sign-in")
@@ -256,40 +264,34 @@ export default function EditTimeBlockPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRepeatOptions(!showRepeatOptions)}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                >
-                  <Repeat className="w-4 h-4" />
-                  Repeat Schedule
-                  <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                    repeatDaily || repeatDays.length > 0
-                      ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-500"
+              <div className="space-y-3 mt-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <Repeat className="w-4 h-4 text-indigo-600" />
+                    Repeat Schedule
+                  </label>
+                  <span className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                    hasRepeatSchedule
+                      ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                      : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                   }`}>
-                    {repeatDaily ? "Daily" : repeatDays.length > 0 ? `${repeatDays.length} days` : "Off"}
+                    {repeatSummary}
                   </span>
-                </button>
-              </div>
-              
-              {showRepeatOptions && (
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                  <RepeatDaysSelector
-                    selectedDays={repeatDays}
-                    onChange={(days) => {
-                      setRepeatDays(days)
-                      if (days.length > 0) setRepeatDaily(false)
-                    }}
-                    repeatDaily={repeatDaily}
-                    onRepeatDailyChange={(daily) => {
-                      setRepeatDaily(daily)
-                      if (daily) setRepeatDays([])
-                    }}
-                  />
                 </div>
-              )}
+
+                <RepeatDaysSelector
+                  selectedDays={repeatDays}
+                  onChange={(days) => {
+                    setRepeatDays(days)
+                    if (days.length > 0) setRepeatDaily(false)
+                  }}
+                  repeatDaily={repeatDaily}
+                  onRepeatDailyChange={(daily) => {
+                    setRepeatDaily(daily)
+                    if (daily) setRepeatDays([])
+                  }}
+                />
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Category *</label>

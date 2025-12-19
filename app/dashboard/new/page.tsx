@@ -297,39 +297,24 @@ export default function NewTimeBlockPage() {
               </div>
 
               {/* Repeat Options */}
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setShowRepeatOptions(!showRepeatOptions)}
-                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                >
-                  <Repeat className="w-4 h-4" />
+              <div className="space-y-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <Repeat className="w-4 h-4 text-indigo-600" />
                   Repeat Schedule
-                  <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                    repeatDaily || repeatDays.length > 0
-                      ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-500"
-                  }`}>
-                    {repeatDaily ? "Daily" : repeatDays.length > 0 ? `${repeatDays.length} days` : "Off"}
-                  </span>
-                </button>
+                </label>
                 
-                {showRepeatOptions && (
-                  <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                    <RepeatDaysSelector
-                      selectedDays={repeatDays}
-                      onChange={(days) => {
-                        setRepeatDays(days)
-                        if (days.length > 0) setRepeatDaily(false)
-                      }}
-                      repeatDaily={repeatDaily}
-                      onRepeatDailyChange={(daily) => {
-                        setRepeatDaily(daily)
-                        if (daily) setRepeatDays([])
-                      }}
-                    />
-                  </div>
-                )}
+                <RepeatDaysSelector
+                  selectedDays={repeatDays}
+                  onChange={(days) => {
+                    setRepeatDays(days)
+                    if (days.length > 0) setRepeatDaily(false)
+                  }}
+                  repeatDaily={repeatDaily}
+                  onRepeatDailyChange={(daily) => {
+                    setRepeatDaily(daily)
+                    if (daily) setRepeatDays([])
+                  }}
+                />
               </div>
 
               {/* Description */}
