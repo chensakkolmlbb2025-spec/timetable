@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import type { TimeBlock as TimeBlockType } from "@/lib/types"
-import { timeToMinutes } from "@/lib/date-utils"
+import { timeToMinutes, minutesToTime } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
 import { CATEGORY_COLORS, type CategoryColorKey } from "@/lib/design-system"
-import { RefreshCw, CheckCircle2, Repeat } from "lucide-react"
+import { RefreshCw, CheckCircle2, Repeat, GripVertical } from "lucide-react"
 import { formatSelectedDays } from "@/components/ui/repeat-days-selector"
 
 // ============================================================================
@@ -18,11 +18,17 @@ interface TimeGridProps {
   blocks: TimeBlockType[]
   onTimeSlotClick?: (time: string) => void
   onBlockClick?: (block: TimeBlockType) => void
+  /** Called when a block is dragged to a new time */
+  onBlockReschedule?: (block: TimeBlockType, newStartTime: string, newEndTime: string) => void
   className?: string
   /** Minimum block height in pixels to ensure readability */
   minBlockHeight?: number
   /** Show 15-minute interval lines for better precision */
   showQuarterHours?: boolean
+  /** Enable drag-and-drop rescheduling */
+  enableDragDrop?: boolean
+  /** Snap interval for drag-drop in minutes (default: 15) */
+  snapInterval?: number
 }
 
 interface BlockPosition {
@@ -36,6 +42,15 @@ interface ProcessedBlock {
   block: TimeBlockType
   position: BlockPosition
   categoryColors: typeof CATEGORY_COLORS[keyof typeof CATEGORY_COLORS]
+}
+
+interface DragState {
+  isDragging: boolean
+  blockId: string | null
+  startY: number
+  initialTop: number
+  currentTop: number
+  blockDuration: number // in minutes
 }
 
 // ============================================================================
@@ -146,10 +161,23 @@ export function TimeGrid({
   blocks, 
   onTimeSlotClick, 
   onBlockClick,
+  onBlockReschedule,
   className,
   minBlockHeight = 32,
-  showQuarterHours = true
+  showQuarterHours = true,
+  enableDragDrop = true,
+  snapInterval = 15
 }: TimeGridProps) {
+  const gridRef = React.useRef<HTMLDivElement>(null)
+  const [dragState, setDragState] = React.useState<DragState>({
+    isDragging: false,
+    blockId: null,
+    startY: 0,
+    initialTop: 0,
+    currentTop: 0,
+    blockDuration: 0
+  })
+  
   const startMinutes = timeToMinutes(startTime)
   const endMinutes = timeToMinutes(endTime)
   let startM = startMinutes
@@ -236,9 +264,138 @@ export function TimeGrid({
     }))
   }, [blocks, getBlockPosition])
 
+  // ========== DRAG AND DROP HANDLERS ==========
+  
+  const snapToInterval = React.useCallback((minutes: number): number => {
+    return Math.round(minutes / snapInterval) * snapInterval
+  }, [snapInterval])
+
+  const handleDragStart = React.useCallback((
+    e: React.MouseEvent | React.TouchEvent,
+    block: TimeBlockType,
+    position: BlockPosition
+  ) => {
+    if (!enableDragDrop || !onBlockReschedule) return
+    
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    const duration = getBlockDuration(block)
+    
+    setDragState({
+      isDragging: true,
+      blockId: block.id,
+      startY: clientY,
+      initialTop: position.top,
+      currentTop: position.top,
+      blockDuration: duration
+    })
+    
+    // Add cursor style to body
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
+  }, [enableDragDrop, onBlockReschedule])
+
+  const handleDragMove = React.useCallback((e: MouseEvent | TouchEvent) => {
+    if (!dragState.isDragging || !gridRef.current) return
+    
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    const gridRect = gridRef.current.getBoundingClientRect()
+    const gridHeight = gridRect.height
+    
+    // Calculate new position
+    const deltaY = clientY - dragState.startY
+    const deltaPercent = (deltaY / gridHeight) * 100
+    let newTop = dragState.initialTop + deltaPercent
+    
+    // Clamp to grid bounds
+    const maxTop = 100 - (dragState.blockDuration / totalMinutes) * 100
+    newTop = Math.max(0, Math.min(newTop, maxTop))
+    
+    // Snap to interval
+    const newStartMinutes = startM + (newTop / 100) * totalMinutes
+    const snappedMinutes = snapToInterval(newStartMinutes)
+    const snappedTop = ((snappedMinutes - startM) / totalMinutes) * 100
+    
+    setDragState(prev => ({ ...prev, currentTop: snappedTop }))
+  }, [dragState.isDragging, dragState.startY, dragState.initialTop, dragState.blockDuration, totalMinutes, startM, snapToInterval])
+
+  const handleDragEnd = React.useCallback(() => {
+    if (!dragState.isDragging || !dragState.blockId) {
+      setDragState({
+        isDragging: false,
+        blockId: null,
+        startY: 0,
+        initialTop: 0,
+        currentTop: 0,
+        blockDuration: 0
+      })
+      return
+    }
+    
+    // Reset cursor
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+    
+    // Find the block and calculate new times
+    const block = blocks.find(b => b.id === dragState.blockId)
+    if (block && onBlockReschedule) {
+      const newStartMinutes = Math.round(startM + (dragState.currentTop / 100) * totalMinutes)
+      const snappedStart = snapToInterval(newStartMinutes)
+      const newEndMinutes = snappedStart + dragState.blockDuration
+      
+      // Only trigger if position actually changed
+      const oldStartMinutes = timeToMinutes(block.startTime)
+      if (snappedStart !== oldStartMinutes) {
+        const newStartTime = minutesToTime(snappedStart)
+        const newEndTime = minutesToTime(newEndMinutes)
+        
+        console.log('[TimeGrid] Block rescheduled:', {
+          blockId: block.id,
+          oldStart: block.startTime,
+          oldEnd: block.endTime,
+          newStart: newStartTime,
+          newEnd: newEndTime
+        })
+        
+        onBlockReschedule(block, newStartTime, newEndTime)
+      }
+    }
+    
+    setDragState({
+      isDragging: false,
+      blockId: null,
+      startY: 0,
+      initialTop: 0,
+      currentTop: 0,
+      blockDuration: 0
+    })
+  }, [dragState, blocks, onBlockReschedule, startM, totalMinutes, snapToInterval])
+
+  // Add global mouse/touch event listeners for drag
+  React.useEffect(() => {
+    if (dragState.isDragging) {
+      const handleMove = (e: MouseEvent | TouchEvent) => handleDragMove(e)
+      const handleEnd = () => handleDragEnd()
+      
+      window.addEventListener('mousemove', handleMove)
+      window.addEventListener('mouseup', handleEnd)
+      window.addEventListener('touchmove', handleMove, { passive: false })
+      window.addEventListener('touchend', handleEnd)
+      
+      return () => {
+        window.removeEventListener('mousemove', handleMove)
+        window.removeEventListener('mouseup', handleEnd)
+        window.removeEventListener('touchmove', handleMove)
+        window.removeEventListener('touchend', handleEnd)
+      }
+    }
+  }, [dragState.isDragging, handleDragMove, handleDragEnd])
+
   return (
     <div 
-      className={cn("relative flex", className)} 
+      className={cn("relative flex", className, dragState.isDragging && "select-none")} 
       role="grid" 
       aria-label="Daily schedule"
     >
@@ -255,7 +412,7 @@ export function TimeGrid({
       </div>
 
       {/* Grid and blocks */}
-      <div className="flex-1 relative min-w-0" role="rowgroup">
+      <div ref={gridRef} className="flex-1 relative min-w-0" role="rowgroup">
         {/* Grid lines */}
         <div className="absolute inset-0">
           {hours.map((hour, index) => (
@@ -288,16 +445,34 @@ export function TimeGrid({
 
         {/* Time blocks */}
         <div className="absolute inset-0 pointer-events-none">
-          {processedBlocks.map(({ block, position, categoryColors }) => (
-            <TimeBlockItem
-              key={block.id}
-              block={block}
-              position={position}
-              categoryColors={categoryColors}
-              onClick={() => onBlockClick?.(block)}
-            />
-          ))}
+          {processedBlocks.map(({ block, position, categoryColors }) => {
+            const isDragging = dragState.isDragging && dragState.blockId === block.id
+            const displayPosition = isDragging 
+              ? { ...position, top: dragState.currentTop }
+              : position
+              
+            return (
+              <TimeBlockItem
+                key={block.id}
+                block={block}
+                position={displayPosition}
+                categoryColors={categoryColors}
+                onClick={() => !isDragging && onBlockClick?.(block)}
+                isDragging={isDragging}
+                enableDragDrop={enableDragDrop && !!onBlockReschedule}
+                onDragStart={(e) => handleDragStart(e, block, position)}
+              />
+            )
+          })}
         </div>
+        
+        {/* Drag indicator */}
+        {dragState.isDragging && (
+          <div 
+            className="absolute left-0 right-0 h-0.5 bg-indigo-500 z-50 pointer-events-none shadow-lg shadow-indigo-500/50"
+            style={{ top: `${dragState.currentTop}%` }}
+          />
+        )}
       </div>
     </div>
   )
@@ -312,6 +487,9 @@ interface TimeBlockItemProps {
   position: BlockPosition
   categoryColors: typeof CATEGORY_COLORS[keyof typeof CATEGORY_COLORS]
   onClick?: () => void
+  isDragging?: boolean
+  enableDragDrop?: boolean
+  onDragStart?: (e: React.MouseEvent | React.TouchEvent) => void
 }
 
 const TimeBlockItem = React.memo(function TimeBlockItem({
@@ -319,6 +497,9 @@ const TimeBlockItem = React.memo(function TimeBlockItem({
   position,
   categoryColors,
   onClick,
+  isDragging = false,
+  enableDragDrop = false,
+  onDragStart,
 }: TimeBlockItemProps) {
   const duration = getBlockDuration(block)
   const isSmall = duration <= 30
@@ -340,28 +521,53 @@ const TimeBlockItem = React.memo(function TimeBlockItem({
     right: `calc(${100 - leftOffset - width}% + ${gapPx}px)`,
   }
   
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (enableDragDrop && onDragStart) {
+      // Allow drag only if clicking on the drag handle or holding
+      onDragStart(e)
+    }
+  }
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (enableDragDrop && onDragStart) {
+      onDragStart(e)
+    }
+  }
+  
   return (
     <button
       type="button"
       className={cn(
         "absolute pointer-events-auto overflow-hidden rounded-lg shadow-sm border transition-all",
-        "hover:shadow-md hover:scale-[1.02] hover:z-10",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:z-10",
-        "active:scale-[0.98]",
         categoryColors.bgGradient,
         categoryColors.border,
         block.completed ? "opacity-70 hover:opacity-90" : "opacity-100",
         // Smaller text for tiny blocks
-        isTiny ? "text-xs" : isSmall ? "text-sm" : "text-sm"
+        isTiny ? "text-xs" : isSmall ? "text-sm" : "text-sm",
+        // Drag state styling
+        isDragging 
+          ? "z-50 shadow-2xl scale-105 ring-2 ring-indigo-400 cursor-grabbing" 
+          : "hover:shadow-md hover:scale-[1.02] hover:z-10 active:scale-[0.98]",
+        enableDragDrop && "cursor-grab"
       )}
       style={inlineStyle}
       onClick={onClick}
-      aria-label={`${block.title} from ${block.startTime} to ${block.endTime}${block.completed ? ", completed" : ""}`}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      aria-label={`${block.title} from ${block.startTime} to ${block.endTime}${block.completed ? ", completed" : ""}${enableDragDrop ? ". Drag to reschedule." : ""}`}
     >
       <div className={cn(
         "h-full flex flex-col text-white overflow-hidden",
         isTiny ? "p-1.5" : isSmall ? "p-2" : "p-2 sm:p-3"
       )}>
+        {/* Drag handle indicator */}
+        {enableDragDrop && !isTiny && (
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-40 hover:opacity-70 transition-opacity">
+            <GripVertical className="w-3 h-3" />
+          </div>
+        )}
+        
         {/* Header: Time and badges */}
         <div className="flex items-start justify-between gap-1 mb-0.5 flex-shrink-0 min-h-0">
           <span className={cn(

@@ -128,6 +128,36 @@ export default function DashboardPage() {
     })
   }
 
+  // Handle drag-and-drop rescheduling
+  const handleBlockReschedule = async (block: TimeBlock, newStartTime: string, newEndTime: string) => {
+    if (!user) return
+    
+    try {
+      const updatedBlock = {
+        ...block,
+        startTime: newStartTime,
+        endTime: newEndTime,
+      }
+      
+      await updateTimeBlock(updatedBlock)
+      await loadBlocks()
+      
+      toast({
+        title: "Block rescheduled",
+        description: `"${block.title}" moved to ${newStartTime} - ${newEndTime}`,
+      })
+    } catch (error) {
+      console.error('[Dashboard] Failed to reschedule block:', error)
+      toast({
+        title: "Failed to reschedule",
+        description: "Could not update the time block. Please try again.",
+        variant: "destructive",
+      })
+      // Reload to reset the UI
+      await loadBlocks()
+    }
+  }
+
   const handleDeleteBlock = async () => {
     if (!user || !selectedBlock) return
     await deleteTimeBlock(selectedBlock.id)
@@ -338,6 +368,9 @@ export default function DashboardPage() {
               blocks={blocks}
               onTimeSlotClick={(time) => router.push(`/dashboard/new?date=${formatDate(currentDate)}&time=${time}`)}
               onBlockClick={handleBlockClick}
+              onBlockReschedule={handleBlockReschedule}
+              enableDragDrop={true}
+              snapInterval={15}
             />
           )}
         </Card>
