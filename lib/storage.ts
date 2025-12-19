@@ -26,21 +26,28 @@ export async function getTimeBlocks(userId: string): Promise<TimeBlock[]> {
     const supabase = createBrowserClient()
     const { data, error } = await supabase.from("time_blocks").select("*").eq("user_id", userId)
     if (error || !data) return []
-    return data.map((d: any) => ({
-      id: d.id,
-      userId: d.user_id,
-      title: d.title,
-      description: d.description || undefined,
-      date: d.date,
-      startTime: d.start_time,
-      endTime: d.end_time,
-      category: d.category,
-      color: d.color,
-      completed: !!d.completed,
-      repeatDaily: !!d.repeat_daily,
-      repeatDays: d.repeat_days || undefined,
-      createdAt: d.created_at,
-    }))
+    return data.map((d: any) => {
+      // Ensure repeatDays is an array or undefined
+      const repeatDays = d.repeat_days && Array.isArray(d.repeat_days) && d.repeat_days.length > 0
+        ? d.repeat_days
+        : undefined
+      
+      return {
+        id: d.id,
+        userId: d.user_id,
+        title: d.title,
+        description: d.description || undefined,
+        date: d.date,
+        startTime: d.start_time,
+        endTime: d.end_time,
+        category: d.category,
+        color: d.color,
+        completed: !!d.completed,
+        repeatDaily: !!d.repeat_daily,
+        repeatDays,
+        createdAt: d.created_at,
+      }
+    })
   }
 
   if (typeof window === "undefined") return []
@@ -95,21 +102,28 @@ export async function getTimeBlocksForDate(userId: string, dateStr: string): Pro
     const { data, error } = await supabase.from("time_blocks").select("*").eq("user_id", userId)
     if (error || !data) return []
     
-    const allBlocks: TimeBlock[] = data.map((d: any) => ({
-      id: d.id,
-      userId: d.user_id,
-      title: d.title,
-      description: d.description || undefined,
-      date: d.date,
-      startTime: d.start_time,
-      endTime: d.end_time,
-      category: d.category,
-      color: d.color,
-      completed: !!d.completed,
-      repeatDaily: !!d.repeat_daily,
-      repeatDays: d.repeat_days || undefined,
-      createdAt: d.created_at,
-    }))
+    const allBlocks: TimeBlock[] = data.map((d: any) => {
+      // Ensure repeatDays is an array or undefined
+      const repeatDays = d.repeat_days && Array.isArray(d.repeat_days) && d.repeat_days.length > 0
+        ? d.repeat_days
+        : undefined
+      
+      return {
+        id: d.id,
+        userId: d.user_id,
+        title: d.title,
+        description: d.description || undefined,
+        date: d.date,
+        startTime: d.start_time,
+        endTime: d.end_time,
+        category: d.category,
+        color: d.color,
+        completed: !!d.completed,
+        repeatDaily: !!d.repeat_daily,
+        repeatDays,
+        createdAt: d.created_at,
+      }
+    })
     
     const result: TimeBlock[] = []
     const addedIds = new Set<string>()
@@ -196,21 +210,28 @@ export async function getTimeBlocksForDateFromAdmin(
   const { data, error } = await adminClient.from("time_blocks").select("*").eq("user_id", userId)
   if (error || !data) return []
 
-  const allBlocks: TimeBlock[] = (data as any[]).map((d: any) => ({
-    id: d.id,
-    userId: d.user_id,
-    title: d.title,
-    description: d.description || undefined,
-    date: d.date,
-    startTime: d.start_time,
-    endTime: d.end_time,
-    category: d.category,
-    color: d.color,
-    completed: !!d.completed,
-    repeatDaily: !!d.repeat_daily,
-    repeatDays: d.repeat_days || undefined,
-    createdAt: d.created_at,
-  }))
+  const allBlocks: TimeBlock[] = (data as any[]).map((d: any) => {
+    // Ensure repeatDays is an array or undefined
+    const repeatDays = d.repeat_days && Array.isArray(d.repeat_days) && d.repeat_days.length > 0
+      ? d.repeat_days
+      : undefined
+    
+    return {
+      id: d.id,
+      userId: d.user_id,
+      title: d.title,
+      description: d.description || undefined,
+      date: d.date,
+      startTime: d.start_time,
+      endTime: d.end_time,
+      category: d.category,
+      color: d.color,
+      completed: !!d.completed,
+      repeatDaily: !!d.repeat_daily,
+      repeatDays,
+      createdAt: d.created_at,
+    }
+  })
 
   const result: TimeBlock[] = []
   const addedIds = new Set<string>()
@@ -245,6 +266,15 @@ export async function saveTimeBlock(block: TimeBlock): Promise<void> {
   if (typeof window !== "undefined") {
     const supabase = createBrowserClient()
     // upsert into supabase: map fields to snake_case
+    
+    // Ensure repeatDays is properly formatted as array or null
+    let repeatDaysValue = null
+    if (block.repeatDays && Array.isArray(block.repeatDays) && block.repeatDays.length > 0) {
+      // Make sure all values are valid integers 0-6
+      repeatDaysValue = block.repeatDays.filter(d => typeof d === 'number' && d >= 0 && d <= 6)
+      if (repeatDaysValue.length === 0) repeatDaysValue = null
+    }
+    
     const dbRow = {
       id: block.id,
       user_id: block.userId,
@@ -257,11 +287,17 @@ export async function saveTimeBlock(block: TimeBlock): Promise<void> {
       color: block.color,
       completed: block.completed,
       repeat_daily: !!block.repeatDaily,
-      repeat_days: block.repeatDays && block.repeatDays.length > 0 ? block.repeatDays : null,
+      repeat_days: repeatDaysValue,
       created_at: block.createdAt,
     }
+    
+    console.log('[saveTimeBlock] Saving block:', { id: block.id, repeatDaily: dbRow.repeat_daily, repeatDays: dbRow.repeat_days })
+    
     const { error } = await supabase.from("time_blocks").upsert(dbRow)
-    if (error) throw ensureError(error)
+    if (error) {
+      console.error('[saveTimeBlock] Error:', error)
+      throw ensureError(error)
+    }
     return
   }
 
