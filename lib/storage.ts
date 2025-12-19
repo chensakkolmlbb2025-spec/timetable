@@ -265,73 +265,492 @@ export async function getTimeBlocksForDateFromAdmin(
 export async function saveTimeBlock(block: TimeBlock): Promise<void> {
   if (typeof window !== "undefined") {
     const supabase = createBrowserClient()
-    // upsert into supabase: map fields to snake_case
     
-    // Ensure repeatDays is properly formatted as array or null
-    let repeatDaysValue = null
-    if (block.repeatDays && Array.isArray(block.repeatDays) && block.repeatDays.length > 0) {
-      // Make sure all values are valid integers 0-6
-      repeatDaysValue = block.repeatDays.filter(d => typeof d === 'number' && d >= 0 && d <= 6)
-      if (repeatDaysValue.length === 0) repeatDaysValue = null
-    }
-    
-    const dbRow = {
-      id: block.id,
-      user_id: block.userId,
-      title: block.title,
-      description: block.description ?? null,
-      date: block.date,
-      start_time: block.startTime,
-      end_time: block.endTime,
-      category: block.category,
-      color: block.color,
-      completed: block.completed,
-      repeat_daily: !!block.repeatDaily,
-      repeat_days: repeatDaysValue,
-      created_at: block.createdAt,
-    }
-    
-    console.log('[saveTimeBlock] Saving block:', { id: block.id, repeatDaily: dbRow.repeat_daily, repeatDays: dbRow.repeat_days })
-    
-    const { error } = await supabase.from("time_blocks").upsert(dbRow)
-    if (error) {
-      console.error('[saveTimeBlock] Error:', error)
+    try {
+      // ===== VALIDATION =====
+      
+      // Validate required fields
+      if (!block.id || !block.userId || !block.title?.trim()) {
+        throw new Error('Invalid block data: missing required fields (id, userId, or title)')
+      }
+      
+      // Validate date format (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(block.date)) {
+        throw new Error(`Invalid date format: ${block.date}. Expected YYYY-MM-DD`)
+      }
+      
+      // Validate time format (HH:mm)
+      if (!/^\d{2}:\d{2}$/.test(block.startTime) || !/^\d{2}:\d{2}$/.test(block.endTime)) {
+        throw new Error('Invalid time format. Expected HH:mm')
+      }
+      
+      // Validate time range
+      if (block.startTime >= block.endTime) {
+        throw new Error('End time must be after start time')
+      }
+      
+      // Validate category
+      const validCategories = ['work', 'personal', 'health', 'learning', 'social', 'other']
+      if (!validCategories.includes(block.category)) {
+        throw new Error(`Invalid category: ${block.category}`)
+      }
+      
+      // ===== PREPARE REPEAT_DAYS =====
+      
+      let repeatDaysValue = null
+      if (block.repeatDays && Array.isArray(block.repeatDays) && block.repeatDays.length > 0) {
+        // Validate and filter repeatDays: must be integers 0-6
+        const validDays = block.repeatDays.filter(d => 
+          typeof d === 'number' && 
+          Number.isInteger(d) && 
+          d >= 0 && 
+          d <= 6
+        )
+        
+        if (validDays.length !== block.repeatDays.length) {
+          console.warn('[saveTimeBlock] Some repeat days were invalid and filtered out', {
+            original: block.repeatDays,
+            filtered: validDays
+          })
+        }
+        
+        // Remove duplicates and sort
+        repeatDaysValue = validDays.length > 0 
+          ? [...new Set(validDays)].sort()
+          : null
+      }
+      
+      // Ensure mutual exclusivity: if repeatDaily is true, clear repeatDays
+      if (block.repeatDaily && repeatDaysValue) {
+        console.warn('[saveTimeBlock] Block has both repeatDaily and repeatDays. Clearing repeatDays in favor of repeatDaily')
+        repeatDaysValue = null
+      }
+      
+      // ===== BUILD DATABASE ROW =====
+      
+      const dbRow = {
+        id: block.id,
+        user_id: block.userId,
+        title: block.title.trim(),
+        description: block.description?.trim() || null,
+        date: block.date,
+        start_time: block.startTime,
+        end_time: block.endTime,
+        category: block.category,
+        color: block.color || '',
+        completed: !!block.completed,
+        repeat_daily: !!block.repeatDaily,
+        repeat_days: repeatDaysValue,
+        created_at: block.createdAt || new Date().toISOString(),
+      }
+      
+      console.log('[saveTimeBlock] Saving block:', { 
+        id: block.id, 
+        title: dbRow.title,
+        repeatDaily: dbRow.repeat_daily, 
+        repeatDays: dbRow.repeat_days,
+        date: dbRow.date
+      })
+      
+      // ===== UPSERT TO DATABASE =====
+      
+      const { data, error } = await supabase
+        .from("time_blocks")
+        .upsert(dbRow, { 
+          onConflict: 'id',
+          ignoreDuplicates: false 
+        })
+        .select()
+      
+      if (error) {
+        console.error('[saveTimeBlock] Database error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          blockId: block.id
+        })
+        throw ensureError(error)
+      }
+      
+      console.log('[saveTimeBlock] Successfully saved block:', block.id)
+      return
+      
+    } catch (error) {
+      console.error('[saveTimeBlock] Failed to save block:', {
+        error,
+        blockId: block.id,
+        blockData: {
+          title: block.title,
+          date: block.date,
+          repeatDaily: block.repeatDaily,
+          repeatDays: block.repeatDays
+        }
+      })
       throw ensureError(error)
     }
-    return
   }
 
-  const data = localStorage.getItem(BLOCKS_KEY)
-  const allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
+  // ===== LOCALSTORAGE FALLBACK =====
+  
+  try {
+    const data = localStorage.getItem(BLOCKS_KEY)
+    const allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
 
-  const existingIndex = allBlocks.findIndex((b) => b.id === block.id)
-  if (existingIndex >= 0) {
-    allBlocks[existingIndex] = block
-  } else {
-    allBlocks.push(block)
+    const existingIndex = allBlocks.findIndex((b) => b.id === block.id)
+    if (existingIndex >= 0) {
+      console.log('[saveTimeBlock] Updating existing block in localStorage:', block.id)
+      allBlocks[existingIndex] = block
+    } else {
+      console.log('[saveTimeBlock] Adding new block to localStorage:', block.id)
+      allBlocks.push(block)
+    }
+
+    localStorage.setItem(BLOCKS_KEY, JSON.stringify(allBlocks))
+  } catch (error) {
+    console.error('[saveTimeBlock] localStorage error:', error)
+    throw new Error('Failed to save block to local storage')
   }
-
-  localStorage.setItem(BLOCKS_KEY, JSON.stringify(allBlocks))
 }
 
 // Backwards-compatible alias for saving/updating a time block
 export async function updateTimeBlock(block: TimeBlock): Promise<void> {
+  console.log('[updateTimeBlock] Delegating to saveTimeBlock:', block.id)
   return saveTimeBlock(block)
 }
 
-export async function deleteTimeBlock(blockId: string): Promise<void> {
+/**
+ * Delete a time block by ID
+ * Handles both repeating and one-time blocks
+ * @param blockId - The ID of the block to delete
+ * @param options - Optional configuration for delete behavior
+ */
+export async function deleteTimeBlock(
+  blockId: string, 
+  options?: {
+    /** If true, only logs the operation without deleting (dry run) */
+    dryRun?: boolean
+    /** User ID for additional verification (optional security check) */
+    userId?: string
+  }
+): Promise<void> {
   if (typeof window !== "undefined") {
     const supabase = createBrowserClient()
-    const { error } = await supabase.from("time_blocks").delete().eq("id", blockId)
-    if (error) throw ensureError(error)
-    return
+    
+    try {
+      // ===== VALIDATION =====
+      
+      if (!blockId || typeof blockId !== 'string' || blockId.trim() === '') {
+        throw new Error('Invalid blockId: must be a non-empty string')
+      }
+      
+      // Check if block is a virtual instance (contains date suffix)
+      const isVirtualInstance = blockId.includes('-202') // Virtual blocks have format: uuid-YYYY-MM-DD
+      if (isVirtualInstance) {
+        console.warn('[deleteTimeBlock] Attempting to delete virtual instance:', blockId)
+        const baseId = blockId.split('-202')[0] // Extract base ID
+        console.log('[deleteTimeBlock] Extracted base ID for repeating block:', baseId)
+        
+        // Optionally, you might want to handle this differently
+        // For now, we'll delete the base repeating block
+        // In the future, you could add "exception dates" functionality
+        throw new Error(
+          'Cannot delete virtual instance of repeating block. ' +
+          'Please edit the original block or add exception date functionality.'
+        )
+      }
+      
+      console.log('[deleteTimeBlock] Deleting block:', { blockId, options })
+      
+      // Dry run mode - just log without deleting
+      if (options?.dryRun) {
+        console.log('[deleteTimeBlock] DRY RUN - Would delete block:', blockId)
+        return
+      }
+      
+      // ===== FETCH BLOCK BEFORE DELETE (for logging/verification) =====
+      
+      const { data: existingBlock, error: fetchError } = await supabase
+        .from("time_blocks")
+        .select("*")
+        .eq("id", blockId)
+        .maybeSingle()
+      
+      if (fetchError) {
+        console.error('[deleteTimeBlock] Error fetching block before delete:', fetchError)
+      }
+      
+      if (!existingBlock) {
+        console.warn('[deleteTimeBlock] Block not found, may have been already deleted:', blockId)
+        // Not throwing error - idempotent delete
+        return
+      }
+      
+      // Optional: Verify user ownership if userId provided
+      if (options?.userId && existingBlock.user_id !== options.userId) {
+        throw new Error(
+          `Permission denied: Block ${blockId} does not belong to user ${options.userId}`
+        )
+      }
+      
+      console.log('[deleteTimeBlock] Found block to delete:', {
+        id: existingBlock.id,
+        title: existingBlock.title,
+        date: existingBlock.date,
+        repeatDaily: existingBlock.repeat_daily,
+        repeatDays: existingBlock.repeat_days,
+        userId: existingBlock.user_id
+      })
+      
+      // ===== DELETE FROM DATABASE =====
+      
+      const { error: deleteError, count } = await supabase
+        .from("time_blocks")
+        .delete({ count: 'exact' })
+        .eq("id", blockId)
+      
+      if (deleteError) {
+        console.error('[deleteTimeBlock] Database delete error:', {
+          message: deleteError.message,
+          code: deleteError.code,
+          details: deleteError.details,
+          hint: deleteError.hint,
+          blockId
+        })
+        throw ensureError(deleteError)
+      }
+      
+      console.log('[deleteTimeBlock] Successfully deleted block:', {
+        blockId,
+        rowsAffected: count,
+        wasRepeating: existingBlock.repeat_daily || (existingBlock.repeat_days && existingBlock.repeat_days.length > 0)
+      })
+      
+      // Verify deletion
+      if (count === 0) {
+        console.warn('[deleteTimeBlock] No rows were deleted. Block may not exist:', blockId)
+      }
+      
+      return
+      
+    } catch (error) {
+      console.error('[deleteTimeBlock] Failed to delete block:', {
+        error,
+        blockId,
+        options
+      })
+      throw ensureError(error)
+    }
   }
-  const data = localStorage.getItem(BLOCKS_KEY)
-  if (!data) return
+  
+  // ===== LOCALSTORAGE FALLBACK =====
+  
+  try {
+    const data = localStorage.getItem(BLOCKS_KEY)
+    if (!data) {
+      console.warn('[deleteTimeBlock] No blocks in localStorage')
+      return
+    }
 
-  const allBlocks: TimeBlock[] = JSON.parse(data)
-  const filtered = allBlocks.filter((b) => b.id !== blockId)
-  localStorage.setItem(BLOCKS_KEY, JSON.stringify(filtered))
+    const allBlocks: TimeBlock[] = JSON.parse(data)
+    const initialLength = allBlocks.length
+    const filtered = allBlocks.filter((b) => b.id !== blockId)
+    
+    if (filtered.length === initialLength) {
+      console.warn('[deleteTimeBlock] Block not found in localStorage:', blockId)
+    } else {
+      console.log('[deleteTimeBlock] Deleted block from localStorage:', {
+        blockId,
+        beforeCount: initialLength,
+        afterCount: filtered.length
+      })
+    }
+    
+    localStorage.setItem(BLOCKS_KEY, JSON.stringify(filtered))
+  } catch (error) {
+    console.error('[deleteTimeBlock] localStorage error:', error)
+    throw new Error('Failed to delete block from local storage')
+  }
+}
+
+/**
+ * Batch delete multiple time blocks
+ * More efficient than calling deleteTimeBlock multiple times
+ * @param blockIds - Array of block IDs to delete
+ * @param userId - Optional user ID for verification
+ * @returns Object with success count and failed block IDs
+ */
+export async function batchDeleteTimeBlocks(
+  blockIds: string[],
+  userId?: string
+): Promise<{ successCount: number; failedIds: string[]; errors: Error[] }> {
+  const results = { successCount: 0, failedIds: [] as string[], errors: [] as Error[] }
+  
+  if (!blockIds || blockIds.length === 0) {
+    console.warn('[batchDeleteTimeBlocks] No block IDs provided')
+    return results
+  }
+  
+  console.log('[batchDeleteTimeBlocks] Deleting blocks:', { count: blockIds.length, blockIds })
+  
+  if (typeof window !== "undefined") {
+    const supabase = createBrowserClient()
+    
+    try {
+      // Optional: Verify ownership if userId provided
+      if (userId) {
+        const { data: blocks, error: fetchError } = await supabase
+          .from("time_blocks")
+          .select("id, user_id")
+          .in("id", blockIds)
+        
+        if (fetchError) {
+          throw fetchError
+        }
+        
+        const unauthorizedBlocks = blocks?.filter(b => b.user_id !== userId) || []
+        if (unauthorizedBlocks.length > 0) {
+          throw new Error(
+            `Permission denied: ${unauthorizedBlocks.length} block(s) do not belong to user ${userId}`
+          )
+        }
+      }
+      
+      // Batch delete
+      const { error, count } = await supabase
+        .from("time_blocks")
+        .delete({ count: 'exact' })
+        .in("id", blockIds)
+      
+      if (error) {
+        throw error
+      }
+      
+      results.successCount = count || 0
+      console.log('[batchDeleteTimeBlocks] Successfully deleted:', results.successCount)
+      
+    } catch (error) {
+      console.error('[batchDeleteTimeBlocks] Error:', error)
+      results.errors.push(ensureError(error))
+      results.failedIds = blockIds
+    }
+  } else {
+    // localStorage fallback
+    try {
+      const data = localStorage.getItem(BLOCKS_KEY)
+      if (!data) return results
+      
+      const allBlocks: TimeBlock[] = JSON.parse(data)
+      const idsSet = new Set(blockIds)
+      const filtered = allBlocks.filter((b) => !idsSet.has(b.id))
+      
+      results.successCount = allBlocks.length - filtered.length
+      localStorage.setItem(BLOCKS_KEY, JSON.stringify(filtered))
+    } catch (error) {
+      console.error('[batchDeleteTimeBlocks] localStorage error:', error)
+      results.errors.push(new Error('Failed to batch delete from local storage'))
+      results.failedIds = blockIds
+    }
+  }
+  
+  return results
+}
+
+/**
+ * Batch update/save multiple time blocks
+ * More efficient than calling saveTimeBlock multiple times
+ * @param blocks - Array of blocks to save
+ * @returns Object with success count and failed blocks
+ */
+export async function batchSaveTimeBlocks(
+  blocks: TimeBlock[]
+): Promise<{ successCount: number; failedBlocks: TimeBlock[]; errors: Error[] }> {
+  const results = { successCount: 0, failedBlocks: [] as TimeBlock[], errors: [] as Error[] }
+  
+  if (!blocks || blocks.length === 0) {
+    console.warn('[batchSaveTimeBlocks] No blocks provided')
+    return results
+  }
+  
+  console.log('[batchSaveTimeBlocks] Saving blocks:', blocks.length)
+  
+  if (typeof window !== "undefined") {
+    const supabase = createBrowserClient()
+    
+    try {
+      // Validate and prepare all blocks
+      const dbRows = blocks.map(block => {
+        // Validate
+        if (!block.id || !block.userId || !block.title?.trim()) {
+          throw new Error(`Invalid block data: ${block.id}`)
+        }
+        
+        // Prepare repeat_days
+        let repeatDaysValue = null
+        if (block.repeatDays && Array.isArray(block.repeatDays) && block.repeatDays.length > 0) {
+          const validDays = block.repeatDays.filter(d => 
+            typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= 6
+          )
+          repeatDaysValue = validDays.length > 0 ? [...new Set(validDays)].sort() : null
+        }
+        
+        return {
+          id: block.id,
+          user_id: block.userId,
+          title: block.title.trim(),
+          description: block.description?.trim() || null,
+          date: block.date,
+          start_time: block.startTime,
+          end_time: block.endTime,
+          category: block.category,
+          color: block.color || '',
+          completed: !!block.completed,
+          repeat_daily: !!block.repeatDaily,
+          repeat_days: repeatDaysValue,
+          created_at: block.createdAt || new Date().toISOString(),
+        }
+      })
+      
+      // Batch upsert
+      const { error, count } = await supabase
+        .from("time_blocks")
+        .upsert(dbRows, { onConflict: 'id', count: 'exact' })
+      
+      if (error) {
+        throw error
+      }
+      
+      results.successCount = count || 0
+      console.log('[batchSaveTimeBlocks] Successfully saved:', results.successCount)
+      
+    } catch (error) {
+      console.error('[batchSaveTimeBlocks] Error:', error)
+      results.errors.push(ensureError(error))
+      results.failedBlocks = blocks
+    }
+  } else {
+    // localStorage fallback
+    try {
+      const data = localStorage.getItem(BLOCKS_KEY)
+      const allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
+      
+      const blockMap = new Map(allBlocks.map(b => [b.id, b]))
+      
+      blocks.forEach(block => {
+        blockMap.set(block.id, block)
+      })
+      
+      const updatedBlocks = Array.from(blockMap.values())
+      localStorage.setItem(BLOCKS_KEY, JSON.stringify(updatedBlocks))
+      results.successCount = blocks.length
+    } catch (error) {
+      console.error('[batchSaveTimeBlocks] localStorage error:', error)
+      results.errors.push(new Error('Failed to batch save to local storage'))
+      results.failedBlocks = blocks
+    }
+  }
+  
+  return results
 }
 
 // Preferences
