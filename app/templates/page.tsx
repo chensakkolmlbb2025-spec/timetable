@@ -2,23 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, Trash2, CalendarIcon } from "lucide-react"
+import { Pencil, Trash2, CalendarIcon, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader } from "@/components/ui"
 import EmptyState from "@/components/empty-state"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { useAuth } from "@/components/auth-provider"
-import { getDefaultTemplates, deleteDefaultTemplate, applyTemplateToWeek } from "@/lib/storage"
+import { getDefaultTemplates, deleteDefaultTemplate, applyTemplateToWeek, duplicateTemplate } from "@/lib/storage"
 import type { DefaultTemplate } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import TemplateEditorModal from "@/components/template-editor-modal"
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
@@ -37,6 +30,7 @@ export default function TemplatesPage() {
   const { toast } = useToast()
   const [templates, setTemplates] = useState<DefaultTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<DefaultTemplate | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -58,12 +52,70 @@ export default function TemplatesPage() {
   }
 
   const handleDelete = async (templateId: string) => {
-    await deleteDefaultTemplate(templateId)
+    if (!confirm("Are you sure you want to delete this template? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await deleteDefaultTemplate(templateId)
+      await loadTemplates()
+      toast({
+        title: "Template deleted",
+        description: "The default template has been removed",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete template",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleEdit = (template: DefaultTemplate) => {
+    setSelectedTemplate(template)
+    setEditorOpen(true)
+  }
+
+  const handleTemplateUpdated = async () => {
     await loadTemplates()
-    toast({
-      title: "Template deleted",
-      description: "The default template has been removed",
-    })
+  }
+
+  const handleDuplicate = async (template: DefaultTemplate) => {
+    if (!user) return
+
+    // Show day selector
+    const targetDay = prompt(
+      `Duplicate "${DAY_NAMES[template.dayOfWeek]}" template to which day?\n\n` +
+      "Enter a number (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday):"
+    )
+
+    if (targetDay === null) return
+
+    const targetDayNum = parseInt(targetDay)
+    if (isNaN(targetDayNum) || targetDayNum < 0 || targetDayNum > 6) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a number between 0 and 6",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      await duplicateTemplate(template.id, targetDayNum, user.id)
+      await loadTemplates()
+      toast({
+        title: "Template Duplicated",
+        description: `${DAY_NAMES[template.dayOfWeek]} template copied to ${DAY_NAMES[targetDayNum]}`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to duplicate template",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleApplyToWeek = async () => {
@@ -132,69 +184,45 @@ export default function TemplatesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {templates.map((template) => (
-              <Card key={template.id} className="p-4 shadow-lg">
+              <Card key={template.id} className="p-4 shadow-lg hover:shadow-xl transition-shadow">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {DAY_NAMES[template.dayOfWeek]}
                   </h3>
                   <div className="flex gap-1">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedTemplate(template)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{DAY_NAMES[template.dayOfWeek]} Template</DialogTitle>
-                          <DialogDescription>{template.blocks.length} time blocks scheduled</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-3 mt-4">
-                          {template.blocks
-                            .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                            .map((block, idx) => (
-                              <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <h4 className="font-medium text-gray-900 dark:text-white">{block.title}</h4>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                      {block.startTime} - {block.endTime}
-                                      {block.repeatDaily && (
-                                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-800/40">Daily</span>
-                                      )}
-                                    </p>
-                                    {block.description && (
-                                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                                        {block.description}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <span className={`text-xs px-2 py-1 rounded-full ${CATEGORY_COLORS[block.category]}`}>
-                                    {block.category}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEdit(template)}
+                      className="h-8 w-8 p-0"
+                      title="Edit Template"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDuplicate(template)}
+                      className="h-8 w-8 p-0"
+                      title="Duplicate to Another Day"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDelete(template.id)}
                       className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      title="Delete Template"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{template.blocks.length} time blocks</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {template.blocks.length} time {template.blocks.length === 1 ? 'block' : 'blocks'}
+                  </p>
                   <div className="flex flex-wrap gap-1">
                     {Array.from(new Set(template.blocks.map((b) => b.category))).map((category) => (
                       <span key={category} className={`text-xs px-2 py-0.5 rounded-full ${CATEGORY_COLORS[category]}`}>
@@ -207,6 +235,14 @@ export default function TemplatesPage() {
             ))}
           </div>
         )}
+
+        {/* Template Editor Modal */}
+        <TemplateEditorModal
+          template={selectedTemplate}
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          onTemplateUpdated={handleTemplateUpdated}
+        />
       </main>
     </div>
   )

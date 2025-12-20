@@ -927,6 +927,385 @@ export async function deleteDefaultTemplate(templateId: string): Promise<void> {
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(filtered))
 }
 
+/**
+ * Update an entire default template with validation
+ * @param template - The template to update
+ * @returns Updated template
+ */
+export async function updateDefaultTemplate(template: DefaultTemplate): Promise<DefaultTemplate> {
+  // Validate template
+  if (!template.id || !template.userId) {
+    throw new Error('Template must have id and userId')
+  }
+  
+  if (template.dayOfWeek < 0 || template.dayOfWeek > 6) {
+    throw new Error('dayOfWeek must be between 0 (Sunday) and 6 (Saturday)')
+  }
+  
+  // Validate all blocks
+  const validatedBlocks = validateTemplateBlocks(template.blocks)
+  
+  const updatedTemplate = {
+    ...template,
+    blocks: validatedBlocks,
+  }
+  
+  // Save using existing saveDefaultTemplate
+  await saveDefaultTemplate(updatedTemplate)
+  
+  return updatedTemplate
+}
+
+/**
+ * Add a new block to a template with validation
+ * @param templateId - Template ID
+ * @param block - Block to add (without id, userId, date, completed, createdAt)
+ * @returns Updated template
+ */
+export async function addTemplateBlock(
+  templateId: string,
+  block: Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'>
+): Promise<DefaultTemplate> {
+  const templates = typeof window !== "undefined" 
+    ? await (async () => {
+        const supabase = createBrowserClient()
+        const { data } = await supabase.from("default_templates").select("*").eq("id", templateId)
+        return data ? (data as any[]).map((t) => ({
+          id: t.id,
+          userId: t.user_id,
+          name: t.name,
+          dayOfWeek: t.day_of_week,
+          blocks: t.blocks,
+          createdAt: t.created_at,
+        })) : []
+      })()
+    : (() => {
+        const data = localStorage.getItem(TEMPLATES_KEY)
+        return data ? JSON.parse(data) : []
+      })()
+  
+  const template = templates.find((t: DefaultTemplate) => t.id === templateId)
+  if (!template) {
+    throw new Error('Template not found')
+  }
+  
+  // Validate the new block
+  const validatedBlock = validateSingleBlock(block)
+  
+  // Check for time overlaps
+  checkTimeOverlaps([...template.blocks, validatedBlock])
+  
+  const updatedTemplate = {
+    ...template,
+    blocks: [...template.blocks, validatedBlock],
+  }
+  
+  await saveDefaultTemplate(updatedTemplate)
+  return updatedTemplate
+}
+
+/**
+ * Update a specific block within a template
+ * @param templateId - Template ID
+ * @param blockIndex - Index of block to update
+ * @param updates - Partial block updates
+ * @returns Updated template
+ */
+export async function updateTemplateBlock(
+  templateId: string,
+  blockIndex: number,
+  updates: Partial<Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'>>
+): Promise<DefaultTemplate> {
+  const templates = typeof window !== "undefined" 
+    ? await (async () => {
+        const supabase = createBrowserClient()
+        const { data } = await supabase.from("default_templates").select("*").eq("id", templateId)
+        return data ? (data as any[]).map((t) => ({
+          id: t.id,
+          userId: t.user_id,
+          name: t.name,
+          dayOfWeek: t.day_of_week,
+          blocks: t.blocks,
+          createdAt: t.created_at,
+        })) : []
+      })()
+    : (() => {
+        const data = localStorage.getItem(TEMPLATES_KEY)
+        return data ? JSON.parse(data) : []
+      })()
+  
+  const template = templates.find((t: DefaultTemplate) => t.id === templateId)
+  if (!template) {
+    throw new Error('Template not found')
+  }
+  
+  if (blockIndex < 0 || blockIndex >= template.blocks.length) {
+    throw new Error('Invalid block index')
+  }
+  
+  // Merge updates with existing block
+  const updatedBlock = {
+    ...template.blocks[blockIndex],
+    ...updates,
+  }
+  
+  // Validate the updated block
+  const validatedBlock = validateSingleBlock(updatedBlock)
+  
+  // Create new blocks array with updated block
+  const newBlocks = [...template.blocks]
+  newBlocks[blockIndex] = validatedBlock
+  
+  // Check for time overlaps
+  checkTimeOverlaps(newBlocks)
+  
+  const updatedTemplate = {
+    ...template,
+    blocks: newBlocks,
+  }
+  
+  await saveDefaultTemplate(updatedTemplate)
+  return updatedTemplate
+}
+
+/**
+ * Delete a specific block from a template
+ * @param templateId - Template ID
+ * @param blockIndex - Index of block to delete
+ * @returns Updated template
+ */
+export async function deleteTemplateBlock(
+  templateId: string,
+  blockIndex: number
+): Promise<DefaultTemplate> {
+  const templates = typeof window !== "undefined" 
+    ? await (async () => {
+        const supabase = createBrowserClient()
+        const { data } = await supabase.from("default_templates").select("*").eq("id", templateId)
+        return data ? (data as any[]).map((t) => ({
+          id: t.id,
+          userId: t.user_id,
+          name: t.name,
+          dayOfWeek: t.day_of_week,
+          blocks: t.blocks,
+          createdAt: t.created_at,
+        })) : []
+      })()
+    : (() => {
+        const data = localStorage.getItem(TEMPLATES_KEY)
+        return data ? JSON.parse(data) : []
+      })()
+  
+  const template = templates.find((t: DefaultTemplate) => t.id === templateId)
+  if (!template) {
+    throw new Error('Template not found')
+  }
+  
+  if (blockIndex < 0 || blockIndex >= template.blocks.length) {
+    throw new Error('Invalid block index')
+  }
+  
+  const newBlocks = template.blocks.filter((_block: any, idx: number) => idx !== blockIndex)
+  
+  const updatedTemplate = {
+    ...template,
+    blocks: newBlocks,
+  }
+  
+  await saveDefaultTemplate(updatedTemplate)
+  return updatedTemplate
+}
+
+/**
+ * Reorder blocks within a template (for drag-and-drop)
+ * @param templateId - Template ID
+ * @param fromIndex - Source index
+ * @param toIndex - Destination index
+ * @returns Updated template
+ */
+export async function reorderTemplateBlocks(
+  templateId: string,
+  fromIndex: number,
+  toIndex: number
+): Promise<DefaultTemplate> {
+  const templates = typeof window !== "undefined" 
+    ? await (async () => {
+        const supabase = createBrowserClient()
+        const { data } = await supabase.from("default_templates").select("*").eq("id", templateId)
+        return data ? (data as any[]).map((t) => ({
+          id: t.id,
+          userId: t.user_id,
+          name: t.name,
+          dayOfWeek: t.day_of_week,
+          blocks: t.blocks,
+          createdAt: t.created_at,
+        })) : []
+      })()
+    : (() => {
+        const data = localStorage.getItem(TEMPLATES_KEY)
+        return data ? JSON.parse(data) : []
+      })()
+  
+  const template = templates.find((t: DefaultTemplate) => t.id === templateId)
+  if (!template) {
+    throw new Error('Template not found')
+  }
+  
+  if (fromIndex < 0 || fromIndex >= template.blocks.length ||
+      toIndex < 0 || toIndex >= template.blocks.length) {
+    throw new Error('Invalid indices')
+  }
+  
+  const newBlocks = [...template.blocks]
+  const [movedBlock] = newBlocks.splice(fromIndex, 1)
+  newBlocks.splice(toIndex, 0, movedBlock)
+  
+  const updatedTemplate = {
+    ...template,
+    blocks: newBlocks,
+  }
+  
+  await saveDefaultTemplate(updatedTemplate)
+  return updatedTemplate
+}
+
+/**
+ * Duplicate a template to another day of week
+ * @param templateId - Source template ID
+ * @param targetDayOfWeek - Target day (0-6)
+ * @param userId - User ID
+ * @returns New template
+ */
+export async function duplicateTemplate(
+  templateId: string,
+  targetDayOfWeek: number,
+  userId: string
+): Promise<DefaultTemplate> {
+  const templates = await getDefaultTemplates(userId)
+  const sourceTemplate = templates.find(t => t.id === templateId)
+  
+  if (!sourceTemplate) {
+    throw new Error('Source template not found')
+  }
+  
+  if (targetDayOfWeek < 0 || targetDayOfWeek > 6) {
+    throw new Error('Invalid target day of week')
+  }
+  
+  // Check if target day already has a template
+  const existingTarget = templates.find(t => t.dayOfWeek === targetDayOfWeek)
+  
+  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  
+  const newTemplate: DefaultTemplate = {
+    id: existingTarget?.id || crypto.randomUUID(),
+    userId,
+    name: DAY_NAMES[targetDayOfWeek],
+    dayOfWeek: targetDayOfWeek,
+    blocks: sourceTemplate.blocks.map(block => ({ ...block })), // Deep copy
+    createdAt: new Date().toISOString(),
+  }
+  
+  await saveDefaultTemplate(newTemplate)
+  return newTemplate
+}
+
+/**
+ * Validate a single block
+ */
+function validateSingleBlock(
+  block: Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'>
+): Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'> {
+  // Validate title
+  if (!block.title || block.title.trim().length === 0) {
+    throw new Error('Block title is required')
+  }
+  
+  if (block.title.length > 200) {
+    throw new Error('Block title must be 200 characters or less')
+  }
+  
+  // Validate times
+  const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/
+  if (!timeRegex.test(block.startTime)) {
+    throw new Error('Invalid start time format. Use HH:mm (24-hour format)')
+  }
+  
+  if (!timeRegex.test(block.endTime)) {
+    throw new Error('Invalid end time format. Use HH:mm (24-hour format)')
+  }
+  
+  // Validate end time is after start time
+  const startMinutes = timeToMinutes(block.startTime)
+  const endMinutes = timeToMinutes(block.endTime)
+  
+  if (endMinutes <= startMinutes) {
+    throw new Error('End time must be after start time')
+  }
+  
+  // Validate category
+  const validCategories = ['work', 'personal', 'health', 'learning', 'social', 'other']
+  if (!validCategories.includes(block.category)) {
+    throw new Error(`Invalid category. Must be one of: ${validCategories.join(', ')}`)
+  }
+  
+  // Validate description length
+  if (block.description && block.description.length > 500) {
+    throw new Error('Block description must be 500 characters or less')
+  }
+  
+  return {
+    ...block,
+    title: block.title.trim(),
+    description: block.description?.trim() || undefined,
+  }
+}
+
+/**
+ * Validate array of blocks (check for overlaps)
+ */
+function validateTemplateBlocks(
+  blocks: Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'>[]
+): Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'>[] {
+  const validatedBlocks = blocks.map(block => validateSingleBlock(block))
+  checkTimeOverlaps(validatedBlocks)
+  return validatedBlocks
+}
+
+/**
+ * Check for time overlaps in blocks
+ */
+function checkTimeOverlaps(
+  blocks: Omit<TimeBlock, 'id' | 'userId' | 'date' | 'completed' | 'createdAt'>[]
+): void {
+  const sortedBlocks = [...blocks].sort((a, b) => 
+    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+  )
+  
+  for (let i = 0; i < sortedBlocks.length - 1; i++) {
+    const current = sortedBlocks[i]
+    const next = sortedBlocks[i + 1]
+    
+    const currentEnd = timeToMinutes(current.endTime)
+    const nextStart = timeToMinutes(next.startTime)
+    
+    if (currentEnd > nextStart) {
+      throw new Error(
+        `Time overlap detected: "${current.title}" (${current.startTime}-${current.endTime}) ` +
+        `overlaps with "${next.title}" (${next.startTime}-${next.endTime})`
+      )
+    }
+  }
+}
+
+/**
+ * Convert time string (HH:mm) to minutes since midnight
+ */
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
 export async function applyTemplateToWeek(userId: string, startDate: Date): Promise<void> {
   const templates = await getDefaultTemplates(userId)
   const existingBlocks = await getTimeBlocks(userId)
