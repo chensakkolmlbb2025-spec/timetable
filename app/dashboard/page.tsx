@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Plus, Save } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Save, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent } from "@/components/ui"
 import EmptyState from "@/components/empty-state"
@@ -20,6 +20,7 @@ import {
   getDefaultTemplates,
   updateTimeBlock,
   deleteTimeBlock,
+  applyTemplateToAllDays,
 } from "@/lib/storage"
 import { formatDate, formatDisplayDate, addDays, isSameDay } from "@/lib/date-utils"
 import type { TimeBlock, DefaultTemplate } from "@/lib/types"
@@ -226,6 +227,32 @@ export default function DashboardPage() {
     })
   }
 
+  const handleApplyTemplateToAllDays = async () => {
+    if (!user) return
+
+    const dayOfWeek = currentDate.getDay()
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    try {
+      const blocksCreated = await applyTemplateToAllDays(user.id, dayOfWeek, 12)
+      
+      // Reload current day's blocks
+      await loadBlocks()
+
+      toast({
+        title: "Template applied",
+        description: `Applied ${dayNames[dayOfWeek]}'s template to all future ${dayNames[dayOfWeek]}s (${blocksCreated} blocks created for next 12 weeks)`,
+      })
+    } catch (error) {
+      console.error('[Dashboard] Failed to apply template:', error)
+      toast({
+        title: "Failed to apply template",
+        description: error instanceof Error ? error.message : "No template found for this day",
+        variant: "destructive",
+      })
+    }
+  }
+
   const isToday = isSameDay(currentDate, new Date())
 
   if (loading || !user) {
@@ -304,15 +331,27 @@ export default function DashboardPage() {
             {/* Quick add controls - Stack on mobile */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {blocks.length > 0 && (
-                <Button 
-                  onClick={handleSetAsDefault} 
-                  variant="outline" 
-                  className="gap-2 bg-transparent h-10 sm:h-auto order-last sm:order-first"
-                >
-                  <Save className="w-4 h-4" />
-                  <span className="hidden sm:inline">Set as Default</span>
-                  <span className="sm:hidden">Save Template</span>
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleSetAsDefault} 
+                    variant="outline" 
+                    className="gap-2 bg-transparent h-10 sm:h-auto order-last sm:order-first"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span className="hidden sm:inline">Set as Default</span>
+                    <span className="sm:hidden">Save Template</span>
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleApplyTemplateToAllDays} 
+                    variant="default"
+                    className="gap-2 h-10 sm:h-auto order-last sm:order-first bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span className="hidden sm:inline">Apply to All {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getDay()]}days</span>
+                    <span className="sm:hidden">Apply to All</span>
+                  </Button>
+                </>
               )}
 
               {/* Time and duration controls */}

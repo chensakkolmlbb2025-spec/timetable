@@ -988,6 +988,103 @@ export async function applyTemplateToWeek(userId: string, startDate: Date): Prom
   }
 }
 
+/**
+ * Apply a template to all future instances of a specific day of week
+ * @param userId - User ID
+ * @param dayOfWeek - Day of week (0 = Sunday, 6 = Saturday)
+ * @param weeksAhead - Number of weeks to apply template (default: 12 weeks / 3 months)
+ */
+export async function applyTemplateToAllDays(
+  userId: string, 
+  dayOfWeek: number, 
+  weeksAhead: number = 12
+): Promise<number> {
+  const templates = await getDefaultTemplates(userId)
+  const template = templates.find((t) => t.dayOfWeek === dayOfWeek)
+  
+  if (!template || !template.blocks || template.blocks.length === 0) {
+    throw new Error('No template found for this day of week')
+  }
+
+  const existingBlocks = await getTimeBlocks(userId)
+  let blocksCreated = 0
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Calculate all future dates for this day of week
+  const targetDates: string[] = []
+  for (let week = 0; week < weeksAhead; week++) {
+    for (let day = 0; day < 7; day++) {
+      const currentDate = new Date(today)
+      currentDate.setDate(today.getDate() + (week * 7) + day)
+      
+      if (currentDate.getDay() === dayOfWeek && currentDate >= today) {
+        const dateStr = currentDate.toISOString().split("T")[0]
+        targetDates.push(dateStr)
+      }
+    }
+  }
+
+  console.log(`[applyTemplateToAllDays] Applying template to ${targetDates.length} dates`)
+
+  if (typeof window !== "undefined") {
+    const supabase = createBrowserClient()
+    
+    for (const dateStr of targetDates) {
+      // Delete existing blocks for this date
+      await supabase
+        .from("time_blocks")
+        .delete()
+        .eq("user_id", userId)
+        .eq("date", dateStr)
+
+      // Create new blocks from template
+      const newBlocks = template.blocks.map((blockTemplate) => ({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        title: blockTemplate.title,
+        description: blockTemplate.description || null,
+        date: dateStr,
+        start_time: blockTemplate.startTime,
+        end_time: blockTemplate.endTime,
+        category: blockTemplate.category,
+        color: blockTemplate.color || '',
+        completed: false,
+        repeat_daily: !!blockTemplate.repeatDaily,
+        repeat_days: null,
+        created_at: new Date().toISOString(),
+      }))
+
+      if (newBlocks.length > 0) {
+        await supabase.from("time_blocks").insert(newBlocks)
+        blocksCreated += newBlocks.length
+      }
+    }
+  } else {
+    // LocalStorage fallback
+    const allBlocks = existingBlocks.filter(b => !targetDates.includes(b.date))
+    
+    for (const dateStr of targetDates) {
+      template.blocks.forEach((blockTemplate) => {
+        const newBlock: TimeBlock = {
+          id: crypto.randomUUID(),
+          userId,
+          date: dateStr,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          ...blockTemplate,
+        }
+        allBlocks.push(newBlock)
+        blocksCreated++
+      })
+    }
+    
+    localStorage.setItem(BLOCKS_KEY, JSON.stringify(allBlocks))
+  }
+
+  return blocksCreated
+}
+
 // Analytics
 export function calculateDayStats(blocks: TimeBlock[], date: string): DayStats {
   const dayBlocks = blocks.filter((b) => b.date === date)
