@@ -242,10 +242,28 @@ export default function DashboardPage() {
     if (!user) return
 
     try {
+      // Get all templates first to check if any exist
+      const templates = await getDefaultTemplates(user.id)
+      
+      if (templates.length === 0) {
+        toast({
+          title: "No templates found",
+          description: "Create templates by clicking 'Set as Default' on days you want to save",
+          variant: "destructive",
+        })
+        return
+      }
+
       // Get the start of current week (Sunday)
       const today = new Date()
       const startOfWeek = new Date(today)
       startOfWeek.setDate(today.getDate() - today.getDay())
+
+      console.log('[Dashboard] Applying templates to entire week:', {
+        startOfWeek: startOfWeek.toISOString().split('T')[0],
+        templateCount: templates.length,
+        templateDays: templates.map(t => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][t.dayOfWeek])
+      })
 
       // Apply all default templates to the current week
       await applyTemplateToWeek(user.id, startOfWeek)
@@ -253,9 +271,12 @@ export default function DashboardPage() {
       // Reload current day's blocks
       await loadBlocks()
 
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const templateDayNames = templates.map(t => dayNames[t.dayOfWeek]).join(', ')
+
       toast({
-        title: "Default templates applied",
-        description: "Your default templates have been applied to this week's schedule",
+        title: "Templates applied to entire week",
+        description: `Applied ${templates.length} template(s) for: ${templateDayNames}`,
       })
     } catch (error) {
       console.error('[Dashboard] Failed to apply templates:', error)
@@ -389,8 +410,8 @@ export default function DashboardPage() {
                   className="gap-2 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span className="hidden sm:inline">Apply Default Templates</span>
-                  <span className="sm:hidden">Apply Templates</span>
+                  <span className="hidden sm:inline">Apply Templates to Week</span>
+                  <span className="sm:hidden">Apply to Week</span>
                 </Button>
 
                 <Button 
