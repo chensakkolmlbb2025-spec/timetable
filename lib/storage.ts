@@ -1316,36 +1316,69 @@ export async function applyTemplateToWeek(userId: string, startDate: Date): Prom
 
   console.log(`[applyTemplateToWeek] Found ${templates.length} templates, applying to week starting ${startDate.toISOString().split('T')[0]}`)
 
-  // Process each day of the week
-  for (let i = 0; i < 7; i++) {
-    const currentDate = new Date(startDate)
-    currentDate.setDate(startDate.getDate() + i)
-    const dayOfWeek = currentDate.getDay()
-    const dateStr = currentDate.toISOString().split("T")[0]
-
-    // Find template for this day of week
-    const template = templates.find((t) => t.dayOfWeek === dayOfWeek)
+  if (typeof window !== "undefined") {
+    const supabase = createBrowserClient()
     
-    if (!template || !template.blocks || template.blocks.length === 0) {
-      console.log(`[applyTemplateToWeek] No template for ${dayOfWeek} (${dateStr}), skipping`)
-      continue
-    }
+    // Get all blocks for the user to identify which ones to delete
+    const { data: allUserBlocks } = await supabase
+      .from("time_blocks")
+      .select("*")
+      .eq("user_id", userId)
+    
+    const allBlocks = allUserBlocks || []
+    
+    // Process each day of the week
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(startDate)
+      currentDate.setDate(startDate.getDate() + i)
+      const dayOfWeek = currentDate.getDay()
+      const dateStr = currentDate.toISOString().split("T")[0]
 
-    console.log(`[applyTemplateToWeek] Applying template for ${dayOfWeek} (${dateStr}) with ${template.blocks.length} blocks`)
-
-    if (typeof window !== "undefined") {
-      const supabase = createBrowserClient()
+      // Find template for this day of week
+      const template = templates.find((t) => t.dayOfWeek === dayOfWeek)
       
-      // Delete existing blocks for this date
-      const { error: deleteError } = await supabase
-        .from("time_blocks")
-        .delete()
-        .eq("user_id", userId)
-        .eq("date", dateStr)
-      
-      if (deleteError) {
-        console.error(`[applyTemplateToWeek] Error deleting blocks for ${dateStr}:`, deleteError)
+      if (!template || !template.blocks || template.blocks.length === 0) {
+        console.log(`[applyTemplateToWeek] No template for ${dayOfWeek} (${dateStr}), skipping`)
         continue
+      }
+
+      console.log(`[applyTemplateToWeek] Applying template for ${dayOfWeek} (${dateStr}) with ${template.blocks.length} blocks`)
+
+      // Find ALL blocks that would appear on this date (including repeating ones)
+      const blocksToDelete: string[] = []
+      
+      for (const block of allBlocks) {
+        // Block with exact date match
+        if (block.date === dateStr) {
+          blocksToDelete.push(block.id)
+          continue
+        }
+        
+        // Repeating daily blocks
+        if (block.repeat_daily) {
+          blocksToDelete.push(block.id)
+          continue
+        }
+        
+        // Blocks that repeat on this day of week
+        if (block.repeat_days && Array.isArray(block.repeat_days) && block.repeat_days.includes(dayOfWeek)) {
+          blocksToDelete.push(block.id)
+          continue
+        }
+      }
+      
+      // Delete all identified blocks
+      if (blocksToDelete.length > 0) {
+        console.log(`[applyTemplateToWeek] Deleting ${blocksToDelete.length} blocks for ${dateStr} (including repeating blocks)`)
+        const { error: deleteError } = await supabase
+          .from("time_blocks")
+          .delete()
+          .in("id", blocksToDelete)
+        
+        if (deleteError) {
+          console.error(`[applyTemplateToWeek] Error deleting blocks for ${dateStr}:`, deleteError)
+          continue
+        }
       }
 
       // Create new blocks from template
@@ -1360,8 +1393,8 @@ export async function applyTemplateToWeek(userId: string, startDate: Date): Prom
         category: blockTemplate.category,
         color: blockTemplate.color || '#3B82F6',
         completed: false,
-        repeat_daily: !!blockTemplate.repeatDaily,
-        repeat_days: blockTemplate.repeatDays || null,
+        repeat_daily: false, // Don't set as repeating when applying templates
+        repeat_days: null,   // Templates create specific date instances
         created_at: new Date().toISOString(),
       }))
 
@@ -1375,13 +1408,34 @@ export async function applyTemplateToWeek(userId: string, startDate: Date): Prom
       } else {
         console.log(`[applyTemplateToWeek] Successfully created ${newBlocks.length} blocks for ${dateStr}`)
       }
-    } else {
-      // LocalStorage fallback
-      const data = localStorage.getItem(BLOCKS_KEY)
-      const allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
+    }
+  } else {
+    // LocalStorage fallback
+    const data = localStorage.getItem(BLOCKS_KEY)
+    let allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
+    
+    // Process each day of the week
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(startDate)
+      currentDate.setDate(startDate.getDate() + i)
+      const dayOfWeek = currentDate.getDay()
+      const dateStr = currentDate.toISOString().split("T")[0]
+
+      // Find template for this day of week
+      const template = templates.find((t) => t.dayOfWeek === dayOfWeek)
       
-      // Remove existing blocks for this date
-      const filteredBlocks = allBlocks.filter((b) => b.date !== dateStr)
+      if (!template || !template.blocks || template.blocks.length === 0) {
+        continue
+      }
+      
+      // Remove ALL blocks that would appear on this date
+      allBlocks = allBlocks.filter((b) => {
+        // Keep block if it doesn't appear on this date
+        if (b.date === dateStr) return false
+        if (b.repeatDaily) return false
+        if (b.repeatDays && b.repeatDays.includes(dayOfWeek)) return false
+        return true
+      })
       
       // Add new blocks from template
       template.blocks.forEach((blockTemplate) => {
@@ -1392,15 +1446,121 @@ export async function applyTemplateToWeek(userId: string, startDate: Date): Prom
           completed: false,
           createdAt: new Date().toISOString(),
           ...blockTemplate,
+          repeatDaily: false, // Don't set as repeating
+          repeatDays: undefined,
         }
-        filteredBlocks.push(newBlock)
+        allBlocks.push(newBlock)
       })
-      
-      localStorage.setItem(BLOCKS_KEY, JSON.stringify(filteredBlocks))
     }
+    
+    localStorage.setItem(BLOCKS_KEY, JSON.stringify(allBlocks))
   }
   
   console.log('[applyTemplateToWeek] Finished applying templates to week')
+}
+
+/**
+ * Clear all tasks for a specific day
+ * Removes ALL time blocks that appear on the specified date, including:
+ * - Blocks with exact date match
+ * - Blocks with repeat_daily = true
+ * - Blocks with repeat_days containing the target day of week
+ * 
+ * @param userId - User ID
+ * @param date - Date to clear (Date object or ISO string)
+ */
+export async function clearAllTasksForDay(
+  userId: string,
+  date: Date | string
+): Promise<void> {
+  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0]
+  const targetDate = typeof date === 'string' ? new Date(date) : date
+  const dayOfWeek = targetDate.getDay()
+
+  console.log(`[clearAllTasksForDay] Clearing all tasks for ${dateStr} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]})`)
+
+  if (typeof window !== "undefined") {
+    const supabase = createBrowserClient()
+
+    // First, fetch all user's blocks to identify which ones appear on this date
+    const { data: allBlocks, error: fetchError } = await supabase
+      .from("time_blocks")
+      .select("*")
+      .eq("user_id", userId)
+
+    if (fetchError) {
+      console.error('[clearAllTasksForDay] Error fetching blocks:', fetchError)
+      throw fetchError
+    }
+
+    if (!allBlocks || allBlocks.length === 0) {
+      console.log('[clearAllTasksForDay] No blocks found for user')
+      return
+    }
+
+    // Identify blocks that appear on this date
+    const blocksToDelete: string[] = []
+    
+    allBlocks.forEach((block) => {
+      // Block appears on this date if:
+      // 1. It has exact date match
+      if (block.date === dateStr) {
+        blocksToDelete.push(block.id)
+        return
+      }
+      
+      // 2. It has repeat_daily = true
+      if (block.repeat_daily) {
+        blocksToDelete.push(block.id)
+        return
+      }
+      
+      // 3. It has repeat_days containing this day of week
+      if (block.repeat_days && Array.isArray(block.repeat_days) && block.repeat_days.includes(dayOfWeek)) {
+        blocksToDelete.push(block.id)
+        return
+      }
+    })
+
+    if (blocksToDelete.length === 0) {
+      console.log('[clearAllTasksForDay] No blocks to delete for this date')
+      return
+    }
+
+    console.log(`[clearAllTasksForDay] Deleting ${blocksToDelete.length} blocks that appear on ${dateStr}`)
+
+    // Delete all identified blocks
+    const { error: deleteError } = await supabase
+      .from("time_blocks")
+      .delete()
+      .in("id", blocksToDelete)
+
+    if (deleteError) {
+      console.error('[clearAllTasksForDay] Error deleting blocks:', deleteError)
+      throw deleteError
+    }
+
+    console.log(`[clearAllTasksForDay] Successfully cleared all tasks for ${dateStr}`)
+  } else {
+    // LocalStorage fallback
+    const data = localStorage.getItem(BLOCKS_KEY)
+    let allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
+
+    // Remove all blocks that appear on this date
+    const originalCount = allBlocks.length
+    allBlocks = allBlocks.filter((block) => {
+      // Keep block if it doesn't appear on this date
+      if (block.date === dateStr) return false
+      if (block.repeatDaily) return false
+      if (block.repeatDays && block.repeatDays.includes(dayOfWeek)) return false
+      return true
+    })
+
+    const deletedCount = originalCount - allBlocks.length
+    console.log(`[clearAllTasksForDay] Deleted ${deletedCount} blocks from localStorage`)
+
+    localStorage.setItem(BLOCKS_KEY, JSON.stringify(allBlocks))
+  }
 }
 
 /**

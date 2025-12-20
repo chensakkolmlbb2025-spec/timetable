@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Plus, Save, RefreshCw } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Save, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardContent } from "@/components/ui"
 import EmptyState from "@/components/empty-state"
@@ -21,6 +21,7 @@ import {
   updateTimeBlock,
   deleteTimeBlock,
   applyTemplateToWeek,
+  clearAllTasksForDay,
 } from "@/lib/storage"
 import { formatDate, formatDisplayDate, addDays, isSameDay } from "@/lib/date-utils"
 import type { TimeBlock, DefaultTemplate } from "@/lib/types"
@@ -266,6 +267,33 @@ export default function DashboardPage() {
     }
   }
 
+  const handleClearAllTasks = async () => {
+    if (!user) return
+
+    try {
+      const dateStr = formatDate(currentDate)
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      const dayName = dayNames[currentDate.getDay()]
+
+      await clearAllTasksForDay(user.id, dateStr)
+      
+      // Reload current day's blocks
+      await loadBlocks()
+
+      toast({
+        title: "All tasks cleared",
+        description: `All tasks for ${dayName} have been removed`,
+      })
+    } catch (error) {
+      console.error('[Dashboard] Failed to clear tasks:', error)
+      toast({
+        title: "Failed to clear tasks",
+        description: error instanceof Error ? error.message : "Could not clear all tasks",
+        variant: "destructive",
+      })
+    }
+  }
+
   const isToday = isSameDay(currentDate, new Date())
 
   if (loading || !user) {
@@ -362,6 +390,17 @@ export default function DashboardPage() {
                 <RefreshCw className="w-4 h-4" />
                 <span className="hidden sm:inline">Apply Default Templates</span>
                 <span className="sm:hidden">Apply Templates</span>
+              </Button>
+
+              <Button 
+                onClick={handleClearAllTasks} 
+                variant="destructive"
+                className="gap-2 h-10 sm:h-auto"
+                disabled={blocks.length === 0}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Clear All Tasks</span>
+                <span className="sm:hidden">Clear All</span>
               </Button>
 
               {/* Time and duration controls */}
