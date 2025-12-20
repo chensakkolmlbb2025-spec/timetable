@@ -335,7 +335,7 @@ export default function DashboardPage() {
                   <Button 
                     onClick={handleSetAsDefault} 
                     variant="outline" 
-                    className="gap-2 bg-transparent h-10 sm:h-auto order-last sm:order-first"
+                    className="gap-2 bg-transparent h-10 sm:h-auto"
                   >
                     <Save className="w-4 h-4" />
                     <span className="hidden sm:inline">Set as Default</span>
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                   <Button 
                     onClick={handleApplyTemplateToAllDays} 
                     variant="default"
-                    className="gap-2 h-10 sm:h-auto order-last sm:order-first bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                    className="gap-2 h-10 sm:h-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                   >
                     <RefreshCw className="w-4 h-4" />
                     <span className="hidden sm:inline">Apply to All {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getDay()]}days</span>
