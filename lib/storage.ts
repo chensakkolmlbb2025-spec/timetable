@@ -1308,9 +1308,15 @@ function timeToMinutes(time: string): number {
 
 export async function applyTemplateToWeek(userId: string, startDate: Date): Promise<void> {
   const templates = await getDefaultTemplates(userId)
-  const existingBlocks = await getTimeBlocks(userId)
+  
+  if (templates.length === 0) {
+    console.log('[applyTemplateToWeek] No templates found for user')
+    return
+  }
 
-  // Generate blocks for the entire week based on templates
+  console.log(`[applyTemplateToWeek] Found ${templates.length} templates, applying to week starting ${startDate.toISOString().split('T')[0]}`)
+
+  // Process each day of the week
   for (let i = 0; i < 7; i++) {
     const currentDate = new Date(startDate)
     currentDate.setDate(startDate.getDate() + i)
@@ -1319,52 +1325,82 @@ export async function applyTemplateToWeek(userId: string, startDate: Date): Prom
 
     // Find template for this day of week
     const template = templates.find((t) => t.dayOfWeek === dayOfWeek)
-    if (!template) continue
+    
+    if (!template || !template.blocks || template.blocks.length === 0) {
+      console.log(`[applyTemplateToWeek] No template for ${dayOfWeek} (${dateStr}), skipping`)
+      continue
+    }
 
-    // Remove existing blocks for this date to avoid duplicates
-    const filteredBlocks = existingBlocks.filter((b) => b.date !== dateStr)
-
-    // Add new blocks from template
-  template.blocks.forEach((blockTemplate) => {
-      const newBlock: TimeBlock = {
-        id: crypto.randomUUID(),
-        userId,
-        date: dateStr,
-        completed: false,
-        createdAt: new Date().toISOString(),
-        ...blockTemplate,
-      }
-      filteredBlocks.push(newBlock)
-    })
+    console.log(`[applyTemplateToWeek] Applying template for ${dayOfWeek} (${dateStr}) with ${template.blocks.length} blocks`)
 
     if (typeof window !== "undefined") {
       const supabase = createBrowserClient()
-      // Replace existing blocks for the date
-      // Delete existing on the date
-      await supabase.from("time_blocks").delete().eq("user_id", userId).eq("date", dateStr)
+      
+      // Delete existing blocks for this date
+      const { error: deleteError } = await supabase
+        .from("time_blocks")
+        .delete()
+        .eq("user_id", userId)
+        .eq("date", dateStr)
+      
+      if (deleteError) {
+        console.error(`[applyTemplateToWeek] Error deleting blocks for ${dateStr}:`, deleteError)
+        continue
+      }
+
+      // Create new blocks from template
+      const newBlocks = template.blocks.map((blockTemplate) => ({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        title: blockTemplate.title,
+        description: blockTemplate.description || null,
+        date: dateStr,
+        start_time: blockTemplate.startTime,
+        end_time: blockTemplate.endTime,
+        category: blockTemplate.category,
+        color: blockTemplate.color || '#3B82F6',
+        completed: false,
+        repeat_daily: !!blockTemplate.repeatDaily,
+        repeat_days: blockTemplate.repeatDays || null,
+        created_at: new Date().toISOString(),
+      }))
 
       // Insert new blocks
-      const toInsert = filteredBlocks.map((b) => ({
-        id: b.id,
-        user_id: b.userId,
-        title: b.title,
-        description: b.description || null,
-        date: b.date,
-        start_time: b.startTime,
-        end_time: b.endTime,
-        category: b.category,
-        color: b.color,
-        completed: b.completed,
-        repeat_daily: !!b.repeatDaily,
-        created_at: b.createdAt,
-      }))
-      if (toInsert.length > 0) {
-        await supabase.from("time_blocks").insert(toInsert)
+      const { error: insertError } = await supabase
+        .from("time_blocks")
+        .insert(newBlocks)
+      
+      if (insertError) {
+        console.error(`[applyTemplateToWeek] Error inserting blocks for ${dateStr}:`, insertError)
+      } else {
+        console.log(`[applyTemplateToWeek] Successfully created ${newBlocks.length} blocks for ${dateStr}`)
       }
-  } else {
+    } else {
+      // LocalStorage fallback
+      const data = localStorage.getItem(BLOCKS_KEY)
+      const allBlocks: TimeBlock[] = data ? JSON.parse(data) : []
+      
+      // Remove existing blocks for this date
+      const filteredBlocks = allBlocks.filter((b) => b.date !== dateStr)
+      
+      // Add new blocks from template
+      template.blocks.forEach((blockTemplate) => {
+        const newBlock: TimeBlock = {
+          id: crypto.randomUUID(),
+          userId,
+          date: dateStr,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          ...blockTemplate,
+        }
+        filteredBlocks.push(newBlock)
+      })
+      
       localStorage.setItem(BLOCKS_KEY, JSON.stringify(filteredBlocks))
     }
   }
+  
+  console.log('[applyTemplateToWeek] Finished applying templates to week')
 }
 
 /**

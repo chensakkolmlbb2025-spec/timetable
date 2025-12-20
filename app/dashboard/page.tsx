@@ -196,35 +196,45 @@ export default function DashboardPage() {
     const dayOfWeek = currentDate.getDay()
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-    const template: DefaultTemplate = {
-      id: crypto.randomUUID(),
-      userId: user.id,
-      name: `${dayNames[dayOfWeek]} Template`,
-      dayOfWeek,
-      blocks: blocks.map((block) => ({
-        title: block.title,
-        description: block.description,
-        startTime: block.startTime,
-        endTime: block.endTime,
-        category: block.category,
-        repeatDaily: block.repeatDaily,
-        color: block.color,
-      })),
-      createdAt: new Date().toISOString(),
+    try {
+      const template: DefaultTemplate = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        name: `${dayNames[dayOfWeek]} Template`,
+        dayOfWeek,
+        blocks: blocks.map((block) => ({
+          title: block.title,
+          description: block.description,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          category: block.category,
+          repeatDaily: block.repeatDaily,
+          color: block.color,
+        })),
+        createdAt: new Date().toISOString(),
+      }
+
+      const existingTemplates = await getDefaultTemplates(user.id)
+      const existingTemplate = existingTemplates.find((t) => t.dayOfWeek === dayOfWeek)
+      if (existingTemplate) {
+        template.id = existingTemplate.id
+      }
+
+      console.log(`[Dashboard] Saving template for ${dayNames[dayOfWeek]} with ${template.blocks.length} blocks`)
+      await saveDefaultTemplate(template)
+
+      toast({
+        title: "Template saved",
+        description: `${dayNames[dayOfWeek]}'s schedule has been saved as your default template (${template.blocks.length} blocks)`,
+      })
+    } catch (error) {
+      console.error('[Dashboard] Failed to save template:', error)
+      toast({
+        title: "Failed to save template",
+        description: error instanceof Error ? error.message : "Could not save template",
+        variant: "destructive",
+      })
     }
-
-  const existingTemplates = await getDefaultTemplates(user.id)
-    const existingTemplate = existingTemplates.find((t) => t.dayOfWeek === dayOfWeek)
-    if (existingTemplate) {
-      template.id = existingTemplate.id
-    }
-
-  await saveDefaultTemplate(template)
-
-    toast({
-      title: "Template saved",
-      description: `${dayNames[dayOfWeek]}'s schedule has been saved as your default template`,
-    })
   }
 
   const handleApplyDefaultTemplates = async () => {
