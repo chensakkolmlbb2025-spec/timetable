@@ -366,45 +366,49 @@ export default function DashboardPage() {
 
   {/* Timetable grid */}
   <Card className="mb-0 mt-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Schedule</h2>
-            
-            {/* Quick add controls - Stack on mobile */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <Button 
-                onClick={handleSetAsDefault} 
-                variant="outline" 
-                className="gap-2 bg-transparent h-10 sm:h-auto"
-                disabled={blocks.length === 0}
-              >
-                <Save className="w-4 h-4" />
-                <span className="hidden sm:inline">Set as Default</span>
-                <span className="sm:hidden">Save Template</span>
-              </Button>
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Schedule</h2>
               
-              <Button 
-                onClick={handleApplyDefaultTemplates} 
-                variant="default"
-                className="gap-2 h-10 sm:h-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span className="hidden sm:inline">Apply Default Templates</span>
-                <span className="sm:hidden">Apply Templates</span>
-              </Button>
+              {/* Template control buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 sm:mt-0">
+                <Button 
+                  onClick={handleSetAsDefault} 
+                  variant="outline" 
+                  className="gap-2 bg-transparent h-10"
+                  disabled={blocks.length === 0}
+                >
+                  <Save className="w-4 h-4" />
+                  <span className="hidden sm:inline">Set as Default</span>
+                  <span className="sm:hidden">Save Template</span>
+                </Button>
+                
+                <Button 
+                  onClick={handleApplyDefaultTemplates} 
+                  variant="default"
+                  className="gap-2 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span className="hidden sm:inline">Apply Default Templates</span>
+                  <span className="sm:hidden">Apply Templates</span>
+                </Button>
 
-              <Button 
-                onClick={handleClearAllTasks} 
-                variant="destructive"
-                className="gap-2 h-10 sm:h-auto"
-                disabled={blocks.length === 0}
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Clear All Tasks</span>
-                <span className="sm:hidden">Clear All</span>
-              </Button>
-
-              {/* Time and duration controls */}
-              <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                <Button 
+                  onClick={handleClearAllTasks} 
+                  variant="destructive"
+                  className="gap-2 h-10"
+                  disabled={blocks.length === 0}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Clear All Tasks</span>
+                  <span className="sm:hidden">Clear All</span>
+                </Button>
+              </div>
+            </div>
+            
+            {/* Quick add controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex items-center gap-2 flex-1">
                 <Input
                   type="time"
                   value={quickTime}
@@ -433,7 +437,7 @@ export default function DashboardPage() {
 
               <Button
                 onClick={() => router.push(`/dashboard/new?date=${formatDate(currentDate)}&time=${quickTime}&duration=${quickDuration}`)}
-                className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-10 sm:h-auto active:scale-95 transition-transform"
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-10 active:scale-95 transition-transform"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Add Time Block</span>
