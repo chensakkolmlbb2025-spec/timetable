@@ -20,7 +20,7 @@ import {
   getDefaultTemplates,
   updateTimeBlock,
   deleteTimeBlock,
-  applyTemplateToAllDays,
+  applyTemplateToWeek,
 } from "@/lib/storage"
 import { formatDate, formatDisplayDate, addDays, isSameDay } from "@/lib/date-utils"
 import type { TimeBlock, DefaultTemplate } from "@/lib/types"
@@ -227,27 +227,30 @@ export default function DashboardPage() {
     })
   }
 
-  const handleApplyTemplateToAllDays = async () => {
+  const handleApplyDefaultTemplates = async () => {
     if (!user) return
 
-    const dayOfWeek = currentDate.getDay()
-    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-
     try {
-      const blocksCreated = await applyTemplateToAllDays(user.id, dayOfWeek, 12)
+      // Get the start of current week (Sunday)
+      const today = new Date()
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() - today.getDay())
+
+      // Apply all default templates to the current week
+      await applyTemplateToWeek(user.id, startOfWeek)
       
       // Reload current day's blocks
       await loadBlocks()
 
       toast({
-        title: "Template applied",
-        description: `Applied ${dayNames[dayOfWeek]}'s template to all future ${dayNames[dayOfWeek]}s (${blocksCreated} blocks created for next 12 weeks)`,
+        title: "Default templates applied",
+        description: "Your default templates have been applied to this week's schedule",
       })
     } catch (error) {
-      console.error('[Dashboard] Failed to apply template:', error)
+      console.error('[Dashboard] Failed to apply templates:', error)
       toast({
-        title: "Failed to apply template",
-        description: error instanceof Error ? error.message : "No template found for this day",
+        title: "Failed to apply templates",
+        description: error instanceof Error ? error.message : "Could not apply default templates",
         variant: "destructive",
       })
     }
@@ -330,29 +333,26 @@ export default function DashboardPage() {
             
             {/* Quick add controls - Stack on mobile */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {blocks.length > 0 && (
-                <>
-                  <Button 
-                    onClick={handleSetAsDefault} 
-                    variant="outline" 
-                    className="gap-2 bg-transparent h-10 sm:h-auto"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span className="hidden sm:inline">Set as Default</span>
-                    <span className="sm:hidden">Save Template</span>
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleApplyTemplateToAllDays} 
-                    variant="default"
-                    className="gap-2 h-10 sm:h-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span className="hidden sm:inline">Apply to All {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getDay()]}days</span>
-                    <span className="sm:hidden">Apply to All</span>
-                  </Button>
-                </>
-              )}
+              <Button 
+                onClick={handleSetAsDefault} 
+                variant="outline" 
+                className="gap-2 bg-transparent h-10 sm:h-auto"
+                disabled={blocks.length === 0}
+              >
+                <Save className="w-4 h-4" />
+                <span className="hidden sm:inline">Set as Default</span>
+                <span className="sm:hidden">Save Template</span>
+              </Button>
+              
+              <Button 
+                onClick={handleApplyDefaultTemplates} 
+                variant="default"
+                className="gap-2 h-10 sm:h-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline">Apply Default Templates</span>
+                <span className="sm:hidden">Apply Templates</span>
+              </Button>
 
               {/* Time and duration controls */}
               <div className="flex items-center gap-2 flex-1 sm:flex-initial">
